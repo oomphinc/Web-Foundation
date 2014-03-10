@@ -1,216 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html ng-app="W3FSurvey">
 	<head>
 		<title>Web Foundation 2014 Survey</title>
 
 		<script src="js/angular.min.js"></script>
+		<script src="js/angular-cookies.min.js"></script>
+		<script src="js/w3f-angular-spreadsheets.js"></script>
 		<script src="js/w3f-survey.js"></script>
-		<script src="https://apis.google.com/js/client.js?onload=init"></script>
 
-		<style>
-body {
-	font-family: Helvetica, sans-serif;
-}
-p {
-	font-family: "Times New Roman", serif;
-}
-h2 {
-	font-size: 1.5em;
-}
-h3 {
-	font-size: 1.25em; 
-}
-h4 {
-	margin-bottom: .5em;
-}
-h5 {
-	margin: .5em 0 .25em;
-}
+		<script type="text/ng-template" id="questionTemplate">
+<div class="question question-{{ question.type }}" ng-init="response=responses[question.questionid]">
+	<h3>{{ question.questionid }}: <em>{{ question.question }}</em></h3>
 
-#sections {
-	position: fixed;
-	left: 0;
-	top: 1em;
-	padding: 0;
-}
-#sections ul {
-	margin: 0;
-	padding: 0;
-}
-#sections li {
-	list-style: none;
-	border-top: 1px solid #e8e8e8;
-	border-left: 1px solid #e8e8e8;
-	border-right: 1px solid #d8d8d8;
-	border-bottom: 1px solid #d8d8d8;
-
-	background: #e2e2e2; /* Old browsers */
-	background: -moz-linear-gradient(top,  #e2e2e2 0%, #dbdbdb 50%, #d1d1d1 51%, #fefefe 100%); /* FF3.6+ */
-	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#e2e2e2), color-stop(50%,#dbdbdb), color-stop(51%,#d1d1d1), color-stop(100%,#fefefe)); /* Chrome,Safari4+ */
-	background: -webkit-linear-gradient(top,  #e2e2e2 0%,#dbdbdb 50%,#d1d1d1 51%,#fefefe 100%); /* Chrome10+,Safari5.1+ */
-	background: -o-linear-gradient(top,  #e2e2e2 0%,#dbdbdb 50%,#d1d1d1 51%,#fefefe 100%); /* Opera 11.10+ */
-	background: -ms-linear-gradient(top,  #e2e2e2 0%,#dbdbdb 50%,#d1d1d1 51%,#fefefe 100%); /* IE10+ */
-	background: linear-gradient(to bottom,  #e2e2e2 0%,#dbdbdb 50%,#d1d1d1 51%,#fefefe 100%); /* W3C */
-	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#e2e2e2', endColorstr='#fefefe',GradientType=0 ); /* IE6-9 */
-}
-	#sections li:hover {
-background: #ebf1f6; /* Old browsers */
-background: -moz-linear-gradient(top,  #ebf1f6 0%, #abd3ee 50%, #89c3eb 51%, #d5ebfb 100%); /* FF3.6+ */
-background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#ebf1f6), color-stop(50%,#abd3ee), color-stop(51%,#89c3eb), color-stop(100%,#d5ebfb)); /* Chrome,Safari4+ */
-background: -webkit-linear-gradient(top,  #ebf1f6 0%,#abd3ee 50%,#89c3eb 51%,#d5ebfb 100%); /* Chrome10+,Safari5.1+ */
-background: -o-linear-gradient(top,  #ebf1f6 0%,#abd3ee 50%,#89c3eb 51%,#d5ebfb 100%); /* Opera 11.10+ */
-background: -ms-linear-gradient(top,  #ebf1f6 0%,#abd3ee 50%,#89c3eb 51%,#d5ebfb 100%); /* IE10+ */
-background: linear-gradient(to bottom,  #ebf1f6 0%,#abd3ee 50%,#89c3eb 51%,#d5ebfb 100%); /* W3C */
-filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ebf1f6', endColorstr='#d5ebfb',GradientType=0 ); /* IE6-9 */
-		
-	}
-	#sections li a {
-		cursor: pointer;
-		display: block;
-		padding: .5em;
-	}
-.section {
-	border: 1px solid #ddd;
-	margin: 2em;
-	padding: 2em;
-	margin-left: 10em;
-	border-radius: 1em;
-}
-#survey {
-	max-width: 1024px;
-	margin: 0 auto;
-}
-.question {
-	position: relative;
-	margin-top: 2em;
-}
-.question h3 {
-	padding-right: 4em;
-}
-	.question .answer-select {
-		position: absolute;
-		right: 0;
-		top: 0;
-		font-size: 20px; 
-	}
-	.question .level-select {
-		position: absolute;
-		right: 0;
-		top: .75em;
-		font-size: 20px;
-	}
-.options {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-}
-	.options li {
-		padding: .5em;
-	}
-.guidance {
-	color: #777;
-}
-.justification textarea {
-	width: 100%;
-	padding: .5em;
-	height: 4.5em;
-	box-sizing: border-box;
-}
-		</style>
-
-<script type="text/ng-template" id="questionTemplate">
-	<div class="question question-{{ question.type }}">
-		<h3>{{ question.questionid }}: <em>{{ question.question }}</em></h3>
-
-		<div ng-if="question.type == 'Scale'">
-			<select ng-model="question.response.response" class="answer-select scale-select">
-				<option value="">-</option>
-				<option ng-repeat="val in [].range(10)" value="{{ val }}">
-					{{ val }}
-				</option>
-			</select>
-		</div>
-
-		<div ng-if="question.type == 'Sum'" class="answer-select answer-sum">
-			<input type="text" readonly="readonly" size="3" value="{{ sum(question.subquestions) }}" />
-		</div>
-
-		<div ng-if="question.type == 'WeightedOption'">
-			<ul class="options">
-				<select ng-model="question.response.response" class="answer-select weight-select">
-					<option value="">-</option>
-					<option ng-repeat="option in question.options" value="{{ option.weight }}">{{ option.value }}</option>
-				</select>
-				</li>
-			</ul>
-		</div>
-
-		<div ng-if="question.type == 'YesNo'">
-			<select ng-model="question.response.response" class="answer-select yesno-select">
-				<option value="">-</option>
-				<option value="Yes">Yes</option>
-				<option value="No">No</option>
-			</select>
-
-			<p ng-repeat="supporting in question.supporting">
-				<label ng-if="supporting.type == 'YesNo' || supporting.type == question.response.yesno">{{ supporting.question }}
-					<textarea ng-model="question.response[supporting.id]">{{ question.response[supporting.id] }}</textarea>
-				</label>
-			</p>
-		</div>
-
-		<label class="confidence-level">
-			<span>Confidence Level</span>
-			<select ng-model="question.response.confidence">
-				<option value="">-</option>
-				<option ng-repeat="val in [].range(10)" value="{{ val }}">
-					{{ val }}
-				</option>
-			</select>
-		</label>
-
-		<div ng-if="question.wantexamples == 'Yes'">
-			Give me examples...
-		</div>
-
-		<div ng-if="question.guidance.length">
-			<h4>Guidance:</h4>
-			<p class="guidance" ng-repeat="paragraph in question.guidance">
-				{{ paragraph }}
-			</p>
-		</div>
-
-		<ng-include src="'questionTemplate'" ng-repeat="question in question.subquestions"></ng-include>
-		
-		<div ng-if="question.wantjustification == 'Yes'" class="justification">
-			<h4>Justification and sources (include URLs)</h4>
-
-			<p ng-if="question.justificationnote">{{ question.justificationnote }}</p>
-
-			<textarea ng-model="question.justification">
-				{{ question.justification }}
-			</textarea>
-		</div>
+	<div ng-if="question.type == 'Scale'">
+		<select ng-model="response.response" class="answer-select scale-select">
+			<option value="">-</option>
+			<option ng-repeat="val in [].range(10)" value="{{ val }}">
+				{{ val }}
+			</option>
+		</select>
 	</div>
-</script>
+
+	<div ng-if="question.type == 'Sum'" class="answer-select answer-sum">
+		<input type="text" readonly="readonly" size="3" value="{{ sum(question.subquestions) }}" />
+	</div>
+
+	<div ng-if="question.type == 'Option'">
+		<select ng-model="response.response" class="answer-select option-select">
+			<option value="">-</option>
+			<option ng-repeat="option in question.option" value="{{ option.weight }}" ng-selected="response.response == option.weight">{{ option.content }}</option>
+		</select>
+
+		<p ng-repeat="supporting in question.supporting" class="supporting">
+			<label ng-if="!supporting.values || supporting.values.indexOf(response.response) > -1">
+				{{ supporting.content }}
+				<textarea ng-model="response[supporting.id]"></textarea>
+			</label>
+		</p>
+	</div>
+
+	<label class="confidence-level" ng-if="question.wantconfidence == 'Yes'">
+		<span>Confidence Level</span>
+		<select ng-model="response.confidence">
+			<option value="">-</option>
+			<option ng-repeat="val in [].range(10)" value="{{ val }}" ng-selected="response.response == val">
+				{{ val }}
+			</option>
+		</select>
+	</label>
+
+	<div ng-if="question.wantexamples == 'Yes'">
+		Give me examples...
+	</div>
+
+	<div ng-if="question.guidance.length">
+		<h4>Guidance:</h4>
+		<p class="guidance" ng-repeat="guidance in question.guidance">
+			{{ guidance.weight }} - {{ guidance.content }}
+		</p>
+	</div>
+
+	<ng-include src="'questionTemplate'" ng-repeat="question in question.subquestions"></ng-include>
+	
+	<div ng-if="question.wantjustification == 'Yes'" class="justification">
+		<h4>Justification and sources (include URLs)</h4>
+
+		<p ng-if="question.justificationnote">{{ question.justificationnote }}</p>
+
+		<textarea ng-model="response.justification">
+			{{ question.justification }}
+		</textarea>
+	</div>
+</div>
+		</script>
+
+		<link rel="stylesheet" href="styles.css" />
+
 	</head>
 
   <body>
+		<header>
+			<h1 id="branding">World Wide Web Foundation</h1>
+			<h2>Open Data Barometer Survey - 2014</h2>
+		</header>
+
 		<div id="survey" ng-controller="W3FSurveyController as sc">
-			<div ng-show="!loaded && !error">Loading...</div>
-			
 			<div class="ng-hide" ng-show="error">{{ error }}</div>
 
 			<div class="ng-hide" ng-show="loaded">
 				<nav id="sections">
 					<ul>
-						<li ng-repeat="section in sc.sectionOrder" class="tab">
-							<a ng-click="sc.navigate(section)">{{ section }}</a>
+						<li ng-repeat="section in sc.sectionOrder" ng-class="{ active: sc.section == section }">
+						<a ng-click="sc.navigate(section)">{{ section }}</a>
 						</li>
 					</ul>
 				</nav>
 
-				<section ng-repeat="section in sc.sections" class="section">
+				<section ng-repeat="sectionid in sc.sectionOrder" ng-init="section=sc.sections[sectionid]" class="section" class="ng-hide" ng-if="sectionid == sc.section">
 					<h2>{{ section.title }}</h2>
 
 					<p>{{ section.description }}</p>
@@ -221,7 +107,15 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ebf1f6', end
 				</section>
 			</div>
 
+			<div class="sign-in" ng-show="!loaded" ng-class="ng-hide">
+				<p>Welcome to the Open Data Barometer 2014 Survey.</p>
+
+				<p>Sign in with your Google account to participate.</p>
+
+				<span id="signin-button"></span>
+			</div>
 		</div>
 
+		<script src="https://apis.google.com/js/client:plusone.js?onload=gapi_loaded"></script>
 	</body>
 </html>

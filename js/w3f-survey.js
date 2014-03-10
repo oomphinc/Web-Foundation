@@ -1,116 +1,18 @@
-var masterKey = '0Ahzzu_PDvOngdEJsZzRHVXJVMi13NU9TN2lTbjVQbmc';
-var accessToken;
+var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
+var SCOPE = 'https://spreadsheets.google.com/feeds';
 
 // Gimme a range op!
 Array.prototype.range = function(n) {
 	return Array.apply(null, Array(n)).map(function (_, i) {return i;});
 }
 
-angular.module('GoogleSpreadsheets', [])
-	.factory('spreadsheets', [ '$http', '$q', function($http, $q) {
-		var service = this;
-
-		var getText = function(entry, field) {
-			var elements = entry.getElementsByTagName(field);
-			
-			if(elements.length > 0) {
-				return elements[0].textContent;
-			}
-			else {
-				return null;
-			}
-		};
-
-		function getSheets(key) {
-			var url = 'https://spreadsheets.google.com/feeds/worksheets/' + key + '/private/full?access_token=' + accessToken;
-
-			var deferred = $q.defer();
-
-			console.log(url);
-			$http({ url: url })
-				.success(function(data, status, headers, config) {
-					var xml = new DOMParser().parseFromString(data, "text/xml")
-					var sheets = {};
-
-					angular.forEach(xml.getElementsByTagName('entry'), function(entry) {
-						var title = getText(entry, 'title');
-						var id = getText(entry, 'id');
-						
-						if(typeof id == 'string') {
-							id = id.match(/([^\/]+)$/)[1];
-						}
-
-						sheets[title] = {
-							id: id,
-							rowCount: parseInt(getText(entry, 'rowCount')),
-							colCount: parseInt(getText(entry, 'colCount'))
-						}
-					});
-
-					deferred.resolve(sheets);
-				})
-				.error(function(data, status, headers, config) {
-					deferred.reject(data);
-				});
-
-			return deferred.promise;
-		};
-
-		function getRows(key, sheet, useKey) {
-			var url = 'https://spreadsheets.google.com/feeds/list/' + key + '/' + sheet.id + '/private/full?access_token=' + accessToken;
-
-			var deferred = $q.defer();
-
-			console.log(url);
-			$http({ url: url })
-				.success(function(data, status, headers, config) {
-					var xml = new DOMParser().parseFromString(data, "text/xml")
-					var entries = xml.getElementsByTagName('entry');
-					var rows = useKey ? {} : [];
-
-					angular.forEach(entries, function(entry) {
-						var cells = entry.getElementsByTagNameNS('http://schemas.google.com/spreadsheets/2006/extended', '*');
-						var key;
-						var row = {};
-					
-						angular.forEach(cells, function(cell) {
-							var col = cell.tagName.match(/^gsx:(.+)$/)[1];
-
-							if(useKey && col == useKey) {
-								key = cell.textContent;
-							}
-
-							row[col] = cell.textContent;
-						});
-
-						if(key) {
-							rows[key] = row;
-						}
-						else {
-							rows.push(row);
-						}
-					});
-
-					deferred.resolve(rows);
-				})
-				.error(function(data, status, headers, config) {
-					deferred.reject(data);
-				});
-
-			return deferred.promise;
-		};
-
-		return {
-			getSheets: getSheets,
-			getRows: getRows
-		};
-	} ]);
-
-angular.module('W3FSurvey', [ 'GoogleSpreadsheets' ])
-	.controller('W3FSurveyController', [ 'spreadsheets', '$scope', '$q', function(gs, $scope, $q) {
+angular.module('W3FSurvey', [ 'GoogleSpreadsheets', 'ngCookies' ])
+	.controller('W3FSurveyController', [ 'spreadsheets', '$scope', '$q', '$cookies', function(gs, $scope, $q, $cookies) {	
+		var masterKey = '0Ahzzu_PDvOngdEJsZzRHVXJVMi13NU9TN2lTbjVQbmc';
+		var accessToken = null;
 		var controller = this;
 
-		this.sectionOrder = [];
+		this.sectionOrder = [ 'Home' ];
 		this.sections = {};
 
 		this.questions = {};
@@ -119,23 +21,55 @@ angular.module('W3FSurvey', [ 'GoogleSpreadsheets' ])
 		// Questions by Section ID
 		this.questions = {};
 
-		this.navigate = function() {
-			alert(arguments[0]);
+		// Responses by question ID, as a watched scope model
+		//
+		// TODO: Load from Answer sheet
+		$scope.responses = {};
+
+		// Get callback to update a particular answer in the answer sheet
+		var updateAnswer = function(qid) {
+			return function(oldValue, newValue) { 
+				// BUG: oldValue and newValue are the same in this call from $watchCollection -
+				// See: https://github.com/angular/angular.js/issues/2621. 
+				console.log(arguments);
+			}
 		}
 
+		// Allow use of "Sum" function for summing sub-question response values (the numbers, anyway)
 		$scope.sum = function(questions) {
 			var sum = 0;
 
 			angular.forEach(questions, function(question) {
-				var number = parseInt(question.response.response);
+				var number = parseInt($scope.responses[question.questionid].response);
 
 				if(!isNaN(number)) {
 					sum += number;
+				}
+
+				if(question.subquestions.length) {
+					sum += $scope.sum(question.subquestions);
 				}
 			});
 
 			return sum;
 		};
+
+		// Set up an initial page
+		this.section = $cookies.section;
+
+		if(!this.section) {
+			this.section = $cookies.section = 'Home';
+		}
+
+		this.sections.Home = {
+			title: "World Wide Web Foundation Open Data Barometer - 2014",
+			description: "This is a survey."
+		};
+
+		// Navigate to a different section
+		this.navigate = function(section) {
+			controller.section = $cookies.section = section;
+		}
 
 		this.populate = function(sheets) {
 			var deferred = $q.defer();
@@ -144,9 +78,12 @@ angular.module('W3FSurvey', [ 'GoogleSpreadsheets' ])
 			var populateSections = function(rows) {
 				angular.forEach(rows, function(row) {
 					controller.sectionOrder.push(row.section);
-					if(!controller.panel) {
-						controller.panel = row.section;
+
+					// Default to first section
+					if(!controller.section) {
+						controller.section = row.section;
 					}
+
 					controller.sections[row.section] = row;
 					controller.sections[row.section].questions = [];
 				});
@@ -162,47 +99,43 @@ angular.module('W3FSurvey', [ 'GoogleSpreadsheets' ])
 						return;
 					}
 
-					if(row.guidance) {
-						row.guidance = row.guidance.split(/\n+/);
-					}
-
 					// Responses go here, each question can have multiple response types
 					// (TODO: Load from local data store, update answer sheet with any diffs, load comments on answer sheet)
 					row.response = {};
 
-					// YesNo can have multiple supporting statements information per answer
-					if(row.type == 'YesNo') {
-						row.supporting = [];
+					// Gather various fields into arrays. Original fields are kept, this is just for ease of templates
+					angular.forEach([ 'option', 'guidance', 'supporting' ], function(field) {
+						row[field] = [];
 
-						// Pull up to 10 statements 
-						for(var i = 0; i < 10; i++) {
-							var id = 'supporting' + i;
+						for(var i = 0; i <= 10; i++) {
+							var id = field + i;
 
-							if(row[id]) {
-								var matches = row[id].match(/(Yes|No|YesNo): (.+)/i);
-
-								if(matches) {
-									row.supporting.push({
-										id: id,
-										type: matches[1],
-										question: matches[2]
-									});
-								}
+							if(typeof row[id] == 'string' && row[id] != '' ) {
+								row[field].push({ weight: i, id: id, content: row[id] });
 							}
 						}
-					}
+					});
 
-					// Row up to 10 options into an options array
-					row.options = [];
+					// Extract valid options from supporting information fields
+					angular.forEach(row.supporting, function(option) {
+						var matches = option.content.match(/^\s*(?:(\d+(?:\s*,\s*\d+)*)\s*;)?\s*(.+)\s*$/i);
+
+						option.values = matches[1] && matches[1].split(/\s*,\s*/);
+						option.content = matches[2];
+					});
+
+					// Allow subquestions
 					row.subquestions = [];
 
-					for(var i = 0; i < 10; i++) {
-						if(row['option' + i]) {
-							row.options.push({ weight: i, value: row['option' + i] });
-						}
-					}
-
+					// Keep a flat reference to questions by ID so we can build heirarchy as we go
 					questionsById[row.questionid] = row;
+
+					if(!$scope.responses[row.questionid]) {
+						$scope.responses[row.questionid] = {};
+
+						// Set up individual watches for each response so 
+						$scope.$watchCollection("responses['" + row.questionid + "']", updateAnswer(row.questionid));
+					}
 
 					// Child questions, assume parent has already been registered
 					if(row.parentid) {
@@ -215,10 +148,10 @@ angular.module('W3FSurvey', [ 'GoogleSpreadsheets' ])
 				});
 			}
 
-			gs.getRows(masterKey, sheets['Sections']).then(function(sections) {
+			gs.getRows(masterKey, sheets['Sections'], accessToken).then(function(sections) {
 				populateSections(sections);
 
-				gs.getRows(masterKey, sheets['Questions']).then(function(questions) {
+				gs.getRows(masterKey, sheets['Questions'], accessToken).then(function(questions) {
 					populateQuestions(questions);
 					deferred.resolve();
 				});
@@ -227,50 +160,55 @@ angular.module('W3FSurvey', [ 'GoogleSpreadsheets' ])
 			return deferred.promise;
 		};
 
-		this.bootstrap = function() {
-			gs.getSheets(masterKey).then(function(sheets) {
+		window.authenticated = function(authResult) {
+			if(!authResult || !authResult.status.signed_in || accessToken) {
+				return;
+			}
+
+			accessToken = authResult.access_token;
+
+			// Load the survey from the Master sheet
+			gs.getSheets(masterKey, accessToken).then(function(sheets) {
 				if(!sheets['Sections']) {
 					$scope.error = "Could't find 'Sections' sheet!";
+					return;
 				}
 
 				controller.populate(sheets)['finally'](function() {
 					$scope.loaded = true;
 				});
-
 			});
-		}
-		this.bootstrap();
+		};
 
-
+		window.SURVEY_LOADED = true;
+		window.bootstrap();
 	} ]);
 
-function init() {
-	var config = {
-		'client_id': '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com',
-		'scope': 'https://spreadsheets.google.com/feeds'
-	};
-
-	var matches = document.cookie.match(/\bgs-access-token=([^;]+)/);
-	var bootstrap = function() {
-		angular.element(document).ready(function() {
-			angular.bootstrap(document, ['W3FSurvey']);
-		});
+window.bootstrap = function() {
+	if(!window.GAPI_LOADED || !window.SURVEY_LOADED) {
+		return;
 	}
 
-	if(matches && matches[1]) {
-		accessToken = matches[1];
-
-		bootstrap();
-	}
-	else {
-		gapi.auth.authorize(config, function() {
-			var token = gapi.auth.getToken();
-			
-			accessToken = token.access_token;
-
-			document.cookie = 'gs-access-token=' + accessToken;
-
-			bootstrap();
-		});	
-	}
+	// Try to authenticate immediately
+	gapi.auth.authorize({
+		client_id: CLIENT_ID,
+		scope: SCOPE,
+		immediate: true
+	}, window.authenticated);
 }
+
+window.gapi_loaded = function() {
+	window.GAPI_LOADED = true;
+
+	// Render the sign-in button
+	gapi.signin.render(document.getElementById('signin-button'), {
+		clientid: CLIENT_ID,
+		scope: SCOPE,
+		cookiepolicy: 'single_host_origin',
+		callback: 'authenticated'
+	});
+
+	bootstrap();
+};
+
+
