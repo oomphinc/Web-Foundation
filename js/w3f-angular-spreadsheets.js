@@ -35,11 +35,23 @@ angular.module('GoogleSpreadsheets', [])
 							id = id.match(/([^\/]+)$/)[1];
 						}
 
-						sheets[title] = {
+						var sheet = {
+							key: key,
 							id: id,
 							rowCount: parseInt(getText(entry, 'rowCount')),
 							colCount: parseInt(getText(entry, 'colCount'))
-						}
+						};
+						
+						var links = entry.getElementsByTagName('link');
+
+						// Prefix meta data with :, save links and row id
+						sheet[':links'] = {};
+
+						angular.forEach(links, function(link) {
+							sheet[':links'][link.getAttribute('rel')] = link.getAttribute('href');
+						});
+
+						sheets[title] = sheet;
 					});
 
 					deferred.resolve(sheets);
@@ -67,6 +79,7 @@ angular.module('GoogleSpreadsheets', [])
 					var rows = useKey ? {} : [];
 
 					angular.forEach(entries, function(entry) {
+						var id = entry.getElementsByTagName('id');
 						var cells = entry.getElementsByTagNameNS('http://schemas.google.com/spreadsheets/2006/extended', '*');
 						var key;
 						var row = {};
@@ -81,8 +94,28 @@ angular.module('GoogleSpreadsheets', [])
 							row[col] = cell.textContent;
 						});
 
-						if(key) {
-							rows[key] = row;
+						var links = entry.getElementsByTagName('link');
+
+						// Prefix meta data with :, save links and row id
+						row[':links'] = {};
+
+						angular.forEach(links, function(link) {
+							row[':links'][link.getAttribute('rel')] = link.getAttribute('href');
+						});
+
+						row[':id'] = id[0].textContent.match(/\/([^\/]+)$/)[1];
+
+						if(useKey) {
+							if(key) {
+								rows[key] = row;
+							}
+							else {
+								if(!rows['']) {
+									rows[''] = [];
+								}
+
+								rows[''].push(row);
+							}
 						}
 						else {
 							rows.push(row);
@@ -98,9 +131,54 @@ angular.module('GoogleSpreadsheets', [])
 			return deferred.promise;
 		};
 
+		function updateRow(url, values, accessToken) {
+			var deferred = $q.defer();
+
+			$http({
+				method: 'POST',
+				url: '/submit.php?accessToken=' + accessToken + '&url=' + url + '&method=PUT',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded'
+				},
+				data: $.param(values)
+			})
+				.success(function(data, status, headers, config) {
+					deferred.resolve();
+				})
+				.error(function(data, status, headers, config) {
+					deferred.reject(data);
+				});
+			
+			return deferred.promise;
+		};
+
+		function insertRow(sheet, values, accessToken) {
+			var url = 'https://spreadsheets.google.com/feeds/list/' + sheet.key + '/' + sheet.id + '/private/full';
+			var deferred = $q.defer();
+
+			$http({
+				method: 'POST',
+				url: '/submit.php?accessToken=' + accessToken + '&url=' + url + '&method=POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded'
+				},
+				data: $.param(values)
+			})
+				.success(function(data, status, headers, config) {
+					deferred.resolve();
+				})
+				.error(function(data, status, headers, config) {
+					deferred.reject(data);
+				});
+			
+			return deferred.promise;
+		};
+
 		return {
 			getSheets: getSheets,
-			getRows: getRows
+			getRows: getRows,
+			updateRow: updateRow,
+			insertRow: insertRow
 		};
 	} ]);
 

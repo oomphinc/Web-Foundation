@@ -1,16 +1,8 @@
 body {
-	font: 13px/1.334 "Lucida Grande", "Lucida Sans Unicode", "Helvetica Neue", Helvetica, sans-serif
+	font: 13px/1.334 "Lucida Grande", "Lucida Sans Unicode", "Helvetica Neue", Helvetica, sans-serif;
+	padding: 0;
+	margin: 0;
 }
-
-#branding {
-	padding-left: 186px;
-	width: 0;
-	height: 49px;
-	background: url(http://www.webfoundation.org/wp-content/themes/webfoundation/assets/img/logo_wf.gif);
-	overflow: hidden;
-	white-space: nowrap;
-}
-
 h2 {
 	font-size: 1.5em;
 }
@@ -31,15 +23,91 @@ textarea {
 	box-sizing: border-box;
 }
 
+.section {
+	margin: 1.5em;
+	clear: both;
+}
+
+.question {
+	position: relative;
+	margin-top: 2em;
+}
+	.question .question {
+		margin-left: 1.5em;
+	}
+	.question h3 {
+		padding-right: 4em;
+	}
+	.question .answer-select {
+		position: absolute;
+		right: 0;
+		top: 0;
+		font-size: 20px; 
+	}
+	.question .level-select {
+		position: absolute;
+		right: 0;
+		top: .75em;
+		font-size: 20px;
+	}
+
+.options {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+	.options li {
+		padding: .5em;
+	}
+
+.guidance {
+	color: #777;
+}
+
+
+#wrapper {
+	max-width: 1024px;
+}
+
+#loading {
+	margin: 1em;
+	padding: 2em;
+	clear: both;
+}
+#branding {
+	margin: 1em;
+}
+	#branding h1 {
+		padding-left: 186px;
+		width: 0;
+		height: 49px;
+		background: url(http://www.webfoundation.org/wp-content/themes/webfoundation/assets/img/logo_wf.gif);
+		overflow: hidden;
+		white-space: nowrap;
+
+		float: left;
+	}
+	#branding h2 {
+		line-height: 49px;
+		vertical-align: middle;
+		float: right;
+		color: #444;
+	}
+
 #sections {
 	position: fixed;
 	left: 0;
 	top: 1em;
 	padding: 0;
+	overflow: hidden;
+	transition: width 0.4s;
+	width: 0;
 }
 #sections ul {
 	margin: 0;
 	padding: 0;
+	position: absolute;
+	right: 0;
 }
 #sections li {
 	list-style: none;
@@ -47,6 +115,7 @@ textarea {
 	border-left: 1px solid #e8e8e8;
 	border-right: 1px solid #d8d8d8;
 	border-bottom: 1px solid #d8d8d8;
+	white-space: nowrap;
 
 	background: #e2e2e2; /* Old browsers */
 }
@@ -76,46 +145,3 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 		display: block;
 		padding: .5em;
 	}
-#survey {
-	max-width: 1024px;
-	margin: 0 auto;
-}
-.question {
-	position: relative;
-	margin-top: 2em;
-	margin-left: 1.5em;
-}
-.section {
-	border: 1px solid #ddd;
-	margin: 2em;
-	padding: 2em;
-	margin-left: 10em;
-	border-radius: 1em;
-}
-
-.question h3 {
-	padding-right: 4em;
-}
-	.question .answer-select {
-		position: absolute;
-		right: 0;
-		top: 0;
-		font-size: 20px; 
-	}
-	.question .level-select {
-		position: absolute;
-		right: 0;
-		top: .75em;
-		font-size: 20px;
-	}
-.options {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-}
-	.options li {
-		padding: .5em;
-	}
-.guidance {
-	color: #777;
-}

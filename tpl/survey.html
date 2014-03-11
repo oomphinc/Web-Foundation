@@ -1,0 +1,23 @@
+<div id="loading" ng-show="loading">
+	<h3>Loading survey...</h3>
+</div>
+
+<div class="ng-hide" ng-show="loaded">
+	<nav id="sections">
+		<ul>
+			<li ng-repeat="section in sectionOrder" ng-class="{ active: activeSection == section }">
+			<a ng-click="navigate(section)">{{ section }}</a>
+			</li>
+		</ul>
+	</nav>
+
+	<section ng-repeat="sectionid in sectionOrder" ng-init="section=sections[sectionid]" class="section" class="ng-hide" ng-if="sectionid == activeSection">
+		<h2>{{ section.title }}</h2>
+
+		<p>{{ section.description }}</p>
+
+		<div ng-repeat="question in section.questions">
+			<ng-include src="'questionTemplate'"></ng-include>
+		</div>
+	</section>
+</div>

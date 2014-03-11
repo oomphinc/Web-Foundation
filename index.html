@@ -1,19 +1,22 @@
 <!DOCTYPE html>
-<html ng-app="W3FSurvey">
+<html ng-app="W3FODB">
 	<head>
+		<base href="/" />
 		<title>Web Foundation 2014 Survey</title>
 
+		<script src="js/jquery-1.11.0.min.js"></script>
 		<script src="js/angular.min.js"></script>
 		<script src="js/angular-cookies.min.js"></script>
+		<script src="js/angular-route.min.js"></script>
 		<script src="js/w3f-angular-spreadsheets.js"></script>
 		<script src="js/w3f-survey.js"></script>
 
 		<script type="text/ng-template" id="questionTemplate">
 <div class="question question-{{ question.type }}" ng-init="response=responses[question.questionid]">
-	<h3>{{ question.questionid }}: <em>{{ question.question }}</em></h3>
+	<h3>{{ question.questionid }}: <em><label for="question-{{ question.questionid }}">{{ question.question }}</label></em></h3>
 
 	<div ng-if="question.type == 'Scale'">
-		<select ng-model="response.response" class="answer-select scale-select">
+		<select ng-model="response.response" class="answer-select scale-select" id="question-{{ question.questionid }}">
 			<option value="">-</option>
 			<option ng-repeat="val in [].range(10)" value="{{ val }}">
 				{{ val }}
@@ -22,11 +25,11 @@
 	</div>
 
 	<div ng-if="question.type == 'Sum'" class="answer-select answer-sum">
-		<input type="text" readonly="readonly" size="3" value="{{ sum(question.subquestions) }}" />
+		<input type="text" readonly="readonly" size="3" value="{{ sum(question.subquestions) }}" id="question-{{ question.questionid }}" />
 	</div>
 
 	<div ng-if="question.type == 'Option'">
-		<select ng-model="response.response" class="answer-select option-select">
+		<select ng-model="response.response" class="answer-select option-select" id="question-{{ question.questionid }}">
 			<option value="">-</option>
 			<option ng-repeat="option in question.option" value="{{ option.weight }}" ng-selected="response.response == option.weight">{{ option.content }}</option>
 		</select>
@@ -79,40 +82,20 @@
 	</head>
 
   <body>
-		<header>
-			<h1 id="branding">World Wide Web Foundation</h1>
-			<h2>Open Data Barometer Survey - 2014</h2>
-		</header>
+		<div id="wrapper" ng-controller="W3FSurveyController" with-rail>
+			<header id="branding">
+				<h1>World Wide Web Foundation</h1>
+				<h2>Open Data Barometer Survey - 2014</h2>
+			</header>
 
-		<div id="survey" ng-controller="W3FSurveyController as sc">
 			<div class="ng-hide" ng-show="error">{{ error }}</div>
 
-			<div class="ng-hide" ng-show="loaded">
-				<nav id="sections">
-					<ul>
-						<li ng-repeat="section in sc.sectionOrder" ng-class="{ active: sc.section == section }">
-						<a ng-click="sc.navigate(section)">{{ section }}</a>
-						</li>
-					</ul>
-				</nav>
+			<div id="survey" ng-view></div>
 
-				<section ng-repeat="sectionid in sc.sectionOrder" ng-init="section=sc.sections[sectionid]" class="section" class="ng-hide" ng-if="sectionid == sc.section">
-					<h2>{{ section.title }}</h2>
-
-					<p>{{ section.description }}</p>
-
-					<div ng-repeat="question in section.questions">
-						<ng-include src="'questionTemplate'"></ng-include>
-					</div>
-				</section>
-			</div>
-
-			<div class="sign-in" ng-show="!loaded" ng-class="ng-hide">
-				<p>Welcome to the Open Data Barometer 2014 Survey.</p>
-
+			<div class="sign-in" ng-show="show_signin" ng-class="ng-hide">
 				<p>Sign in with your Google account to participate.</p>
 
-				<span id="signin-button"></span>
+				<span style="display: none" id="signin-button"></span>
 			</div>
 		</div>
 

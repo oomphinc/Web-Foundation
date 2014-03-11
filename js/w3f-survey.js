@@ -6,20 +6,132 @@ Array.prototype.range = function(n) {
 	return Array.apply(null, Array(n)).map(function (_, i) {return i;});
 }
 
-angular.module('W3FSurvey', [ 'GoogleSpreadsheets', 'ngCookies' ])
-	.controller('W3FSurveyController', [ 'spreadsheets', '$scope', '$q', '$cookies', function(gs, $scope, $q, $cookies) {	
-		var masterKey = '0Ahzzu_PDvOngdEJsZzRHVXJVMi13NU9TN2lTbjVQbmc';
-		var accessToken = null;
-		var controller = this;
+angular.module('W3FODB', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute' ])
+	.config([ '$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
+		$routeProvider.when('/:answerKey?', {
+			controller: 'W3FSurvey',
+			templateUrl: 'tpl/survey.html'
+		});
 
-		this.sectionOrder = [ 'Home' ];
-		this.sections = {};
+		$locationProvider.html5Mode(true);
+	} ])
+	.controller('W3FSurvey', [ 'spreadsheets', '$scope', '$rootScope', '$routeParams', '$interval', function(gs, $scope, $rootScope, $routeParams, $interval) {	
+		if(!$routeParams.answerKey) {
+			return;
+		}
 
-		this.questions = {};
-		this.loaded = false;
+		var answerKey = $routeParams.answerKey;
+		var answerSheet;
+
+		$rootScope.$watch('accessToken', function(accessToken) {
+			if(!accessToken) {
+				return;
+			}
+
+			// Try to get answer sheet
+			gs.getSheets(answerKey, accessToken).then(function(sheets) {
+				if(!sheets['Control']) {
+					$scope.error = "Couldn't find control sheet";
+					return;
+				}
+
+				if(!sheets['Answers']) {
+					$scope.error = "Couldn't find answers sheet";
+					return;
+				}
+
+				answerSheet = sheets['Answers'];
+
+				gs.getRows(answerKey, sheets['Control'], accessToken).then(function(config) {
+					if(config.length == 0) {
+						$scope.error = "Couldn't determine country!";
+					}
+
+					$rootScope.country = config[0].country;
+				});
+
+				// Populate answers
+				gs.getRows(answerKey, sheets['Answers'], accessToken).then(function(answers) {
+					angular.forEach(answers, function(answer) {
+						if(!$scope.$parent.responses[answer.questionid]) {
+							$scope.$parent.responses[answer.questionid] = {};
+						}
+						
+						$scope.$parent.responseLinks[answer.questionid] = answer[':links'];
+
+						for(var col in answer) {
+							// Ignore metadata fields starting with :
+							if(col[0] != ':') {
+								$scope.$parent.responses[answer.questionid][col] = answer[col];
+							}
+						}
+					});
+				});
+			});
+
+			// Queue up changes as answers are updated
+			var queue = {}, processQueue = {};
+
+			$scope.$on('update-answer', function(ev, qid, newValues) {
+				var j = 0;
+				for(var k in newValues) j++;
+
+				if(j > 0) {
+					queue[qid] = newValues;
+				}
+			});
+
+			$interval(function() {
+				var j;
+				
+				for(var qid in queue) {
+					j = 0;
+
+					for(var i in $scope.$parent.responses[qid]) {
+						j++;
+					}
+
+					if(j == 0) {
+						continue;
+					}
+
+					var values = $scope.$parent.responses[qid];
+
+					values = $.extend({}, {
+						response: values.response, 
+						justification: values.justification,
+						confidence: values.confidence,
+						examples: values.examples,
+					}, { 
+						questionid: qid
+					});
+
+					if($scope.$parent.responseLinks[qid]) {
+						processQueue[qid] = gs.updateRow($scope.$parent.responseLinks[qid].edit, values, accessToken);
+					}
+					else {
+						processQueue[qid] = gs.insertRow(answerSheet, values, accessToken);
+					}
+				}
+
+				queue = {};
+			}, 3000);
+		});
+	} ])
+	.controller('W3FSurveyController', [ 'spreadsheets', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', function(gs, $scope, $rootScope, $q, $cookies, $routeParams) {	
+		var masterKey = '0AokPSYs1p9vhdEdjeUluaThWc2RqQnI0c21oN1FaYUE';
+
+		$scope.sectionOrder = [];
+		$scope.sections = {};
 
 		// Questions by Section ID
-		this.questions = {};
+		$scope.questions = {};
+
+		// Response row URLs by question ID
+		$scope.responseLinks = {};
+
+		this.loaded = false;
+
 
 		// Responses by question ID, as a watched scope model
 		//
@@ -31,7 +143,10 @@ angular.module('W3FSurvey', [ 'GoogleSpreadsheets', 'ngCookies' ])
 			return function(oldValue, newValue) { 
 				// BUG: oldValue and newValue are the same in this call from $watchCollection -
 				// See: https://github.com/angular/angular.js/issues/2621. 
-				console.log(arguments);
+
+				if($scope.loaded) {
+					$scope.$broadcast('update-answer', qid, newValue);
+				}
 			}
 		}
 
@@ -55,37 +170,28 @@ angular.module('W3FSurvey', [ 'GoogleSpreadsheets', 'ngCookies' ])
 		};
 
 		// Set up an initial page
-		this.section = $cookies.section;
-
-		if(!this.section) {
-			this.section = $cookies.section = 'Home';
-		}
-
-		this.sections.Home = {
-			title: "World Wide Web Foundation Open Data Barometer - 2014",
-			description: "This is a survey."
-		};
+		$scope.activeSection = $cookies.section;
 
 		// Navigate to a different section
-		this.navigate = function(section) {
-			controller.section = $cookies.section = section;
+		$scope.navigate = function(section) {
+			$scope.activeSection = $cookies.section = section;
 		}
 
-		this.populate = function(sheets) {
+		var populate = function(sheets) {
 			var deferred = $q.defer();
 
 			// Populate "Sections" from sections sheet
 			var populateSections = function(rows) {
 				angular.forEach(rows, function(row) {
-					controller.sectionOrder.push(row.section);
+					$scope.sectionOrder.push(row.section);
 
 					// Default to first section
-					if(!controller.section) {
-						controller.section = row.section;
+					if(!$scope.activeSection) {
+						$scope.activeSection = row.section;
 					}
 
-					controller.sections[row.section] = row;
-					controller.sections[row.section].questions = [];
+					$scope.sections[row.section] = row;
+					$scope.sections[row.section].questions = [];
 				});
 			};
 
@@ -95,13 +201,9 @@ angular.module('W3FSurvey', [ 'GoogleSpreadsheets', 'ngCookies' ])
 				var questionsById = {};
 
 				angular.forEach(rows, function(row) {
-					if(!controller.sections[row.section]) {
+					if(!$scope.sections[row.section]) {
 						return;
 					}
-
-					// Responses go here, each question can have multiple response types
-					// (TODO: Load from local data store, update answer sheet with any diffs, load comments on answer sheet)
-					row.response = {};
 
 					// Gather various fields into arrays. Original fields are kept, this is just for ease of templates
 					angular.forEach([ 'option', 'guidance', 'supporting' ], function(field) {
@@ -124,36 +226,38 @@ angular.module('W3FSurvey', [ 'GoogleSpreadsheets', 'ngCookies' ])
 						option.content = matches[2];
 					});
 
-					// Allow subquestions
-					row.subquestions = [];
-
-					// Keep a flat reference to questions by ID so we can build heirarchy as we go
-					questionsById[row.questionid] = row;
-
+					// Make sure responses have somewhere to go
 					if(!$scope.responses[row.questionid]) {
 						$scope.responses[row.questionid] = {};
-
-						// Set up individual watches for each response so 
-						$scope.$watchCollection("responses['" + row.questionid + "']", updateAnswer(row.questionid));
 					}
 
-					// Child questions, assume parent has already been registered
+					// Watch responses to add any changes to the save queue
+					$scope.$watchCollection("responses['" + row.questionid + "']", updateAnswer(row.questionid));
+
+					// Nest subquestions here
+					row.subquestions = [];
+
+					// Save a reference to the question by ID
+					$scope.questions[row.questionid] = row;
+
+					// Child questions, assume parent has already been registered.
 					if(row.parentid) {
-						questionsById[row.parentid].subquestions.push(row);
+						$scope.questions[row.parentid].subquestions.push(row);
 					}
 					// Top-level question
 					else {
-						controller.sections[row.section].questions.push(row);
+						$scope.sections[row.section].questions.push(row);
 					}
 				});
+
+				deferred.resolve();
 			}
 
-			gs.getRows(masterKey, sheets['Sections'], accessToken).then(function(sections) {
+			gs.getRows(masterKey, sheets['Sections'], $rootScope.accessToken).then(function(sections) {
 				populateSections(sections);
 
-				gs.getRows(masterKey, sheets['Questions'], accessToken).then(function(questions) {
+				gs.getRows(masterKey, sheets['Questions'], $rootScope.accessToken).then(function(questions) {
 					populateQuestions(questions);
-					deferred.resolve();
 				});
 			});
 
@@ -161,33 +265,58 @@ angular.module('W3FSurvey', [ 'GoogleSpreadsheets', 'ngCookies' ])
 		};
 
 		window.authenticated = function(authResult) {
-			if(!authResult || !authResult.status.signed_in || accessToken) {
+			if(!authResult || authResult.error) {
+				$scope.show_signin = true;
 				return;
 			}
 
-			accessToken = authResult.access_token;
+			if(!authResult.status.signed_in || $scope.accessToken) {
+				return;
+			}
 
-			// Load the survey from the Master sheet
-			gs.getSheets(masterKey, accessToken).then(function(sheets) {
+			$rootScope.accessToken = authResult.access_token;
+
+			$scope.loading = true;
+
+			// Get sheets in master sheet,
+			gs.getSheets(masterKey, $rootScope.accessToken).then(function(sheets) {
+				// Check for required 'Sections' sheet
 				if(!sheets['Sections']) {
+					$scope.loading = false;
 					$scope.error = "Could't find 'Sections' sheet!";
 					return;
 				}
 
-				controller.populate(sheets)['finally'](function() {
+				// Load the survey
+				populate(sheets)['finally'](function() {
+					$scope.loading = false;
 					$scope.loaded = true;
+
+					$scope.$broadcast('sections-loaded');
 				});
 			});
 		};
+	} ])
+	.directive('withRail', [ '$timeout', function($timeout) {
+		return {
+			link: function($scope, element, attrs) {
+				$scope.$on('sections-loaded', function() {
+					$timeout(function() {
+						var $sections = $('#sections');
+						var $ul = $sections.find('ul');
 
-		window.SURVEY_LOADED = true;
-		window.bootstrap();
+						$sections.width($ul.width());
+						$sections.height($ul.height());
+
+						$(element).css('padding-left', $ul.width());
+					}, 0, false);
+				});
+			}
+		}
 	} ]);
 
-window.bootstrap = function() {
-	if(!window.GAPI_LOADED || !window.SURVEY_LOADED) {
-		return;
-	}
+window.gapi_loaded = function() {
+	window.GAPI_LOADED = true;
 
 	// Try to authenticate immediately
 	gapi.auth.authorize({
@@ -195,10 +324,6 @@ window.bootstrap = function() {
 		scope: SCOPE,
 		immediate: true
 	}, window.authenticated);
-}
-
-window.gapi_loaded = function() {
-	window.GAPI_LOADED = true;
 
 	// Render the sign-in button
 	gapi.signin.render(document.getElementById('signin-button'), {
@@ -207,8 +332,4 @@ window.gapi_loaded = function() {
 		cookiepolicy: 'single_host_origin',
 		callback: 'authenticated'
 	});
-
-	bootstrap();
 };
-
-
