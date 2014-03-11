@@ -11,81 +11,14 @@
 		<script src="js/w3f-angular-spreadsheets.js"></script>
 		<script src="js/w3f-survey.js"></script>
 
-		<script type="text/ng-template" id="questionTemplate">
-<div class="question question-{{ question.type }}" ng-init="response=responses[question.questionid]">
-	<h3>{{ question.questionid }}: <em><label for="question-{{ question.questionid }}">{{ question.question }}</label></em></h3>
-
-	<div ng-if="question.type == 'Scale'">
-		<select ng-model="response.response" class="answer-select scale-select" id="question-{{ question.questionid }}">
-			<option value="">-</option>
-			<option ng-repeat="val in [].range(10)" value="{{ val }}">
-				{{ val }}
-			</option>
-		</select>
-	</div>
-
-	<div ng-if="question.type == 'Sum'" class="answer-select answer-sum">
-		<input type="text" readonly="readonly" size="3" value="{{ sum(question.subquestions) }}" id="question-{{ question.questionid }}" />
-	</div>
-
-	<div ng-if="question.type == 'Option'">
-		<select ng-model="response.response" class="answer-select option-select" id="question-{{ question.questionid }}">
-			<option value="">-</option>
-			<option ng-repeat="option in question.option" value="{{ option.weight }}" ng-selected="response.response == option.weight">{{ option.content }}</option>
-		</select>
-
-		<p ng-repeat="supporting in question.supporting" class="supporting">
-			<label ng-if="!supporting.values || supporting.values.indexOf(response.response) > -1">
-				{{ supporting.content }}
-				<textarea ng-model="response[supporting.id]"></textarea>
-			</label>
-		</p>
-	</div>
-
-	<label class="confidence-level" ng-if="question.wantconfidence == 'Yes'">
-		<span>Confidence Level</span>
-		<select ng-model="response.confidence">
-			<option value="">-</option>
-			<option ng-repeat="val in [].range(10)" value="{{ val }}" ng-selected="response.response == val">
-				{{ val }}
-			</option>
-		</select>
-	</label>
-
-	<div ng-if="question.wantexamples == 'Yes'">
-		Give me examples...
-	</div>
-
-	<div ng-if="question.guidance.length">
-		<h4>Guidance:</h4>
-		<p class="guidance" ng-repeat="guidance in question.guidance">
-			{{ guidance.weight }} - {{ guidance.content }}
-		</p>
-	</div>
-
-	<ng-include src="'questionTemplate'" ng-repeat="question in question.subquestions"></ng-include>
-	
-	<div ng-if="question.wantjustification == 'Yes'" class="justification">
-		<h4>Justification and sources (include URLs)</h4>
-
-		<p ng-if="question.justificationnote">{{ question.justificationnote }}</p>
-
-		<textarea ng-model="response.justification">
-			{{ question.justification }}
-		</textarea>
-	</div>
-</div>
-		</script>
-
 		<link rel="stylesheet" href="styles.css" />
-
 	</head>
 
   <body>
 		<div id="wrapper" ng-controller="W3FSurveyController" with-rail>
 			<header id="branding">
 				<h1>World Wide Web Foundation</h1>
-				<h2>Open Data Barometer Survey - 2014</h2>
+				<h2>Web Index Survey - 2014</h2>
 			</header>
 
 			<div class="ng-hide" ng-show="error">{{ error }}</div>

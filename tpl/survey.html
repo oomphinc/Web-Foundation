@@ -12,12 +12,12 @@
 	</nav>
 
 	<section ng-repeat="sectionid in sectionOrder" ng-init="section=sections[sectionid]" class="section" class="ng-hide" ng-if="sectionid == activeSection">
-		<h2>{{ section.title }}</h2>
+		<h2>{{ section.title.replace('[country]', country) }}</h2>
 
-		<p>{{ section.description }}</p>
+		<p>{{ section.description.replace('[country]', country) }}</p>
 
 		<div ng-repeat="question in section.questions">
-			<ng-include src="'questionTemplate'"></ng-include>
+			<ng-include src="'tpl/question.html'"></ng-include>
 		</div>
 	</section>
 </div>

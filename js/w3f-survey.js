@@ -23,6 +23,7 @@ angular.module('W3FODB', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute' ])
 		var answerKey = $routeParams.answerKey;
 		var answerSheet;
 
+		// Try to get answer sheet once an accessToken is found
 		$rootScope.$watch('accessToken', function(accessToken) {
 			if(!accessToken) {
 				return;
@@ -53,18 +54,36 @@ angular.module('W3FODB', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute' ])
 				// Populate answers
 				gs.getRows(answerKey, sheets['Answers'], accessToken).then(function(answers) {
 					angular.forEach(answers, function(answer) {
-						if(!$scope.$parent.responses[answer.questionid]) {
-							$scope.$parent.responses[answer.questionid] = {};
+						if(!$rootScope.responses[answer.questionid]) {
+							$rootScope.responses[answer.questionid] = {};
 						}
 						
-						$scope.$parent.responseLinks[answer.questionid] = answer[':links'];
+						$rootScope.responseLinks[answer.questionid] = answer[':links'];
+
+						var response = {};
 
 						for(var col in answer) {
 							// Ignore metadata fields starting with :
 							if(col[0] != ':') {
-								$scope.$parent.responses[answer.questionid][col] = answer[col];
+								response[col] = answer[col];
 							}
 						}
+
+						// Collapse multi-part responses into arrays
+						angular.forEach([ 'example' ], function(field) {
+							answer[field] = [];
+
+							for(var i = 0; i <= 10; i++) {
+								var id = field + i;
+
+								if(typeof answer[id] == 'string' && row[id] != '' ) {
+									answer[field].push(answer[id]);
+								}
+							}
+						});
+
+						$rootScope.oldResponses[answer.questionid] = angular.copy(response);
+						$rootScope.responses[answer.questionid] = response;
 					});
 				});
 			});
@@ -73,29 +92,14 @@ angular.module('W3FODB', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute' ])
 			var queue = {}, processQueue = {};
 
 			$scope.$on('update-answer', function(ev, qid, newValues) {
-				var j = 0;
-				for(var k in newValues) j++;
-
-				if(j > 0) {
-					queue[qid] = newValues;
-				}
+				queue[qid] = newValues;
 			});
 
 			$interval(function() {
 				var j;
 				
 				for(var qid in queue) {
-					j = 0;
-
-					for(var i in $scope.$parent.responses[qid]) {
-						j++;
-					}
-
-					if(j == 0) {
-						continue;
-					}
-
-					var values = $scope.$parent.responses[qid];
+					var values = $rootScope.responses[qid];
 
 					values = $.extend({}, {
 						response: values.response, 
@@ -106,12 +110,33 @@ angular.module('W3FODB', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute' ])
 						questionid: qid
 					});
 
-					if($scope.$parent.responseLinks[qid]) {
-						processQueue[qid] = gs.updateRow($scope.$parent.responseLinks[qid].edit, values, accessToken);
+					if(processQueue[qid]) {
+						processQueue[qid].abort();
+					}
+
+					if($rootScope.responseLinks[qid]) {
+						processQueue[qid] = gs.updateRow($rootScope.responseLinks[qid].edit, values, accessToken);
 					}
 					else {
 						processQueue[qid] = gs.insertRow(answerSheet, values, accessToken);
 					}
+
+					processQueue[qid].then(function(row) {
+						$rootScope.responseLinks[qid] = row[':links'];
+
+						var response = {};
+
+						for(var col in row) {
+							// Ignore metadata fields starting with :
+							if(col[0] != ':') {
+								response[col] = row[col];
+							}
+						}
+
+						$rootScope.oldResponses[qid] = response;
+					})['finally'](function() {
+						delete processQueue[qid];
+					});
 				}
 
 				queue = {};
@@ -127,35 +152,24 @@ angular.module('W3FODB', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute' ])
 		// Questions by Section ID
 		$scope.questions = {};
 
-		// Response row URLs by question ID
-		$scope.responseLinks = {};
-
-		this.loaded = false;
-
-
 		// Responses by question ID, as a watched scope model
 		//
 		// TODO: Load from Answer sheet
-		$scope.responses = {};
+		$rootScope.responses = {};
 
-		// Get callback to update a particular answer in the answer sheet
-		var updateAnswer = function(qid) {
-			return function(oldValue, newValue) { 
-				// BUG: oldValue and newValue are the same in this call from $watchCollection -
-				// See: https://github.com/angular/angular.js/issues/2621. 
+		// Responses before any changes. Necessary because of bugs in $scope.$watchCollection 
+		// (https://github.com/angular/angular.js/pull/5661)
+		$rootScope.oldResponses = {};
 
-				if($scope.loaded) {
-					$scope.$broadcast('update-answer', qid, newValue);
-				}
-			}
-		}
+		// Response URLs by question ID
+		$rootScope.responseLinks = {};
 
 		// Allow use of "Sum" function for summing sub-question response values (the numbers, anyway)
-		$scope.sum = function(questions) {
+		$rootScope.sum = function(questions) {
 			var sum = 0;
 
 			angular.forEach(questions, function(question) {
-				var number = parseInt($scope.responses[question.questionid].response);
+				var number = parseInt($rootScope.responses[question.questionid].response);
 
 				if(!isNaN(number)) {
 					sum += number;
@@ -227,12 +241,19 @@ angular.module('W3FODB', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute' ])
 					});
 
 					// Make sure responses have somewhere to go
-					if(!$scope.responses[row.questionid]) {
-						$scope.responses[row.questionid] = {};
+					if(!$rootScope.responses[row.questionid]) {
+						$rootScope.responses[row.questionid] = {};
+						$rootScope.oldResponses[row.questionid] = {};
 					}
 
 					// Watch responses to add any changes to the save queue
-					$scope.$watchCollection("responses['" + row.questionid + "']", updateAnswer(row.questionid));
+					// BUG: oldValue and newValue are the same in this call from $watchCollection -
+					// See: https://github.com/angular/angular.js/issues/2621. 
+					$rootScope.$watchCollection("responses['" + row.questionid + "']", function(oldValue, newValue) {
+						if(!angular.equals(newValue, $scope.oldResponses[row.questionid])) {
+							$rootScope.$broadcast('update-answer', row.questionid, newValue);
+						}
+					});
 
 					// Nest subquestions here
 					row.subquestions = [];
@@ -311,6 +332,62 @@ angular.module('W3FODB', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute' ])
 						$(element).css('padding-left', $ul.width());
 					}, 0, false);
 				});
+			}
+		}
+	} ])
+	.directive('flexibleList', [ function() {
+		return {
+			replace: true,
+			restrict: 'E',
+			link: function($scope, element, attrs) {
+				// Force this model to be an array
+				if(typeof $scope.$eval(attrs.ngModel) == 'undefined') {
+					$scope.$eval(attrs.ngModel + '=[]');
+				}
+
+				function render() {
+					var $ul = $('<ul>');
+
+					angular.forEach($scope.$eval(attrs.ngModel), function(item) {
+						var 
+							$li = $('<li>'),
+							$del = $('<a class="delete-item">x</a>');
+							$input = $('<input class="item">');
+
+						$input.val(item);
+						$li.append($del);
+						$li.append($input);
+						$ul.append($li);
+
+						$del.on('click', function() {
+							var index = $ul.find('.delete-item').index(this);
+							$scope.$eval(attrs.ngModel + '.splice(' + index + ',1)');
+							render();
+						});
+					});
+
+					var $li = $('<li>');
+					var $add = $('<a class="add-item">+ add</a>');
+					
+					$li.append($add);
+					$ul.append($li);
+
+					$add.on('click', function() {
+						$scope.$eval(attrs.ngModel + '.push("")');
+						render();
+					});
+
+					$ul.on('change keyup', 'input', function() {
+						var index = $ul.find('input').index(this);
+
+						$scope.$eval(attrs.ngModel + '[' + index + ']=' + JSON.stringify(this.value));
+					});
+
+					element.html('');
+					element.append($ul);
+				}
+
+				render();
 			}
 		}
 	} ]);
