@@ -70,15 +70,13 @@ textarea {
 
 #wrapper {
 	max-width: 1024px;
+	margin: 1em;
 }
 
 #loading {
 	margin: 1em;
 	padding: 2em;
 	clear: both;
-}
-#branding {
-	margin: 1em;
 }
 	#branding h1 {
 		padding-left: 186px;
