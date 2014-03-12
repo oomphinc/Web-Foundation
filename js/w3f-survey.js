@@ -297,6 +297,7 @@ angular.module('W3FODB', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute' ])
 			}
 
 			$rootScope.accessToken = authResult.access_token;
+			$scope.show_signin = false;
 
 			$scope.loading = true;
 
