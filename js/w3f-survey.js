@@ -76,7 +76,7 @@ angular.module('W3FODB', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute' ])
 							for(var i = 0; i <= 10; i++) {
 								var id = field + i;
 
-								if(typeof answer[id] == 'string' && row[id] != '' ) {
+								if(typeof answer[id] == 'string' && answer[id] != '' ) {
 									answer[field].push(answer[id]);
 								}
 							}
@@ -189,6 +189,7 @@ angular.module('W3FODB', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute' ])
 		// Navigate to a different section
 		$scope.navigate = function(section) {
 			$scope.activeSection = $cookies.section = section;
+			window.scrollTo(0,0);
 		}
 
 		var populate = function(sheets) {
