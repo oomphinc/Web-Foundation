@@ -21,15 +21,15 @@
 				<h2>Web Index Survey - 2014</h2>
 			</header>
 
-			<div class="ng-hide" ng-show="error">{{ error }}</div>
-
-			<div id="survey" ng-view></div>
-
 			<div class="sign-in" ng-show="show_signin" ng-class="ng-hide">
 				<p>Sign in with your Google account to participate.</p>
 
+				<div class="ng-hide" ng-show="error">{{ error }}</div>
+
 				<span style="display: none" id="signin-button"></span>
 			</div>
+
+			<div id="survey" ng-view></div>
 		</div>
 
 		<script src="https://apis.google.com/js/client:plusone.js?onload=gapi_loaded"></script>

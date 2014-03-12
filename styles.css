@@ -64,6 +64,9 @@ textarea {
 	color: #777;
 }
 
+#sign-in {
+	clear: both;
+}
 
 #wrapper {
 	max-width: 1024px;
