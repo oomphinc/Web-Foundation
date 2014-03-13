@@ -51,6 +51,7 @@ textarea {
 			margin: 0 2px;
 			position: relative;
 			padding: 0 2px;
+			white-space: nowrap;
 		}
 		.wis-progress a span.progress-bar-container {
 			display: block;
@@ -119,6 +120,29 @@ textarea {
 	max-width: 1024px;
 	margin: 1em;
 	margin-top: 1.75em;
+}
+
+#status {
+	position: fixed;
+	bottom: 0;
+	left: 50%;
+	transform: translate(-50%, 0);
+	-webkit-transform: translate(-50%, 0);
+	-moz-transform: translate(-50%, 0);
+
+	border: 1px solid #f0e0c0;
+	background-color: #f8f0c8;
+	padding: .5em;
+
+	z-index: 20;
+}
+#status.status-error {
+	border: 1px solid #f0c0c0;
+	background-color: #f8c0c8;
+}
+#status.status-saving {
+	border: 1px solid #c0f0c0;
+	background-color: #c8f0c8;
 }
 
 #loading {

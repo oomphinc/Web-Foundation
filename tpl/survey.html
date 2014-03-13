@@ -1,5 +1,17 @@
 <div id="loading" ng-show="loading">
-	<h3>Loading survey...</h3>
+	<h3>{{ loading }}</h3>
+</div>
+
+<div id="status" fade-on="status" ng-show="status" ng-class="{ 'status-error': status.error, 'status-saving': status.saving }">
+	<ng-pluralize count="status.saving" offset="0" when="{ '0': '', 'one': 'Saving...', 'other': 'Saving {} changes...' }"></ng-pluralize>
+
+	<span ng-if="status.error">
+		{{ status.error }}
+	</span>
+
+	<span ng-if="status.message">
+		{{ status.message }}
+	</span>
 </div>
 
 <div class="ng-hide" ng-show="loaded">

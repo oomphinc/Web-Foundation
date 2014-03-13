@@ -95,7 +95,15 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 		// Three-second timer
 		$interval(function() {
-			var j;
+			var size = _.size(queue);
+
+			if(size == 0) {
+				return;
+			}
+
+			$rootScope.status = {
+				saving: size
+			};
 
 			for(var qid in queue) {
 				var values = $rootScope.responses[qid];
@@ -112,7 +120,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				if(processQueue[qid]) {
 					processQueue[qid].abort();
 				}
-
+				
 				if($rootScope.responseLinks[qid]) {
 					processQueue[qid] = gs.updateRow($rootScope.responseLinks[qid].edit, values, $rootScope.accessToken);
 				}
@@ -133,6 +141,15 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					}
 
 					$rootScope.oldResponses[qid] = response;
+
+					$rootScope.status = {
+						message: "Last saved " + (function(d) { return d.toDateString() + ", " + d.toLocaleTimeString() })(new Date()),
+						clear: 3000
+					};
+				}, function(message) {
+					$rootScope.status = {
+						error: "Failed to save changes for question " + qid
+					};
 				})['finally'](function() {
 					delete processQueue[qid];
 				});
@@ -150,8 +167,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					$rootScope.sectionOrder.push(section.section);
 
 					// Default to first section
-					if(!$scope.activeSection) {
-						$scope.activeSection = section.section;
+					if(!$rootScope.activeSection) {
+						$rootScope.activeSection = section.section;
 					}
 
 					$rootScope.sections[section.section] = section;
@@ -162,7 +179,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			// Populate "Questions" from questions sheet
 			var populateQuestions = function(rows) {
 				angular.forEach(rows, function(question) {
-					if(!$scope.sections[question.section]) {
+					if(!$rootScope.sections[question.section]) {
 						return;
 					}
 
@@ -216,19 +233,19 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				// Try to get answer sheet
 				gs.getSheets(answerKey, $rootScope.accessToken).then(function(sheets) {
 					if(!sheets['Control']) {
-						$scope.error = "Couldn't find control sheet";
+						$rootScope.error = "Couldn't find control sheet";
 						return;
 					}
 
 					if(!sheets['Answers']) {
-						$scope.error = "Couldn't find answers sheet";
+						$rootScope.error = "Couldn't find answers sheet";
 						return;
 					}
 
 					// Get any answer metadata from control sheet
 					gs.getRows(answerKey, sheets['Control'], $rootScope.accessToken).then(function(config) {
 						if(config.length == 0) {
-							$scope.error = "Couldn't determine country!";
+							$rootScope.error = "Couldn't determine country!";
 						}
 
 						$rootScope.country = config[0].country;
@@ -293,13 +310,16 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				});
 			}
 
+			$rootScope.loading = "Loading Sections...";
 			gs.getRows(masterKey, sheets['Sections'], $rootScope.accessToken).then(function(sections) {
 				populateSections(sections);
 
+				$rootScope.loading = "Loading Questions...";
 				gs.getRows(masterKey, sheets['Questions'], $rootScope.accessToken).then(function(questions) {
 					populateQuestions(questions);
 
 					if(answerKey) {
+						$rootScope.loading = "Loading Answers...";
 						loadAnswers();
 					}
 					else {
@@ -313,7 +333,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 		window.authenticated = function(authResult) {
 			if(!authResult || authResult.error) {
-				$scope.show_signin = true;
+				$rootScope.show_signin = true;
 				return;
 			}
 
@@ -322,28 +342,39 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			}
 
 			$rootScope.accessToken = authResult.access_token;
-			$scope.show_signin = false;
+			$rootScope.show_signin = false;
 
-			$scope.loading = true;
+			$rootScope.loading = "Loading Survey...";
 
 			// Get sheets in master sheet,
 			gs.getSheets(masterKey, $rootScope.accessToken).then(function(sheets) {
 				// Check for required 'Sections' sheet
 				if(!sheets['Sections']) {
-					$scope.loading = false;
-					$scope.error = "Could't find 'Sections' sheet!";
+					$rootScope.loading = false;
+					$rootScope.error = "Could't find 'Sections' sheet!";
 					return;
 				}
 
 				// Load the survey
 				populate(sheets)['finally'](function() {
-					$scope.loading = false;
-					$scope.loaded = true;
+					$rootScope.loading = false;
+					$rootScope.status = {
+						message: "Loaded",
+						clear: 3000,
+					};
+
+					$rootScope.loaded = true;
 
 					$rootScope.$broadcast('sections-loaded');
 				});
 			});
 		};
+
+		$rootScope.status = {
+			message: "Loading..."
+		}
+
+		$rootScope.loading = "Authenticating...";
 	} ])
 
 	// Create a rail exactly the size of the sections menu
@@ -387,6 +418,31 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		}
 	} ])
 
+	// Fade out an element based on 'clear' property of argument 
+	.directive('fadeOn', [ '$timeout', function($timeout) {
+		return {
+			link: function($scope, element, attrs) {
+				var timeoutPromise;
+
+				$scope.$watch(attrs.fadeOn, function(val) {
+					$timeout.cancel(timeoutPromise);
+
+					if(!val) {
+						return;
+					}
+
+					if(val.clear) {
+						timeoutPromise = $timeout(function() {
+							element.fadeOut(function() {
+								element.addClass('ng-hide');
+								element.css('display', '');
+							});
+						}, val.clear, 0)
+					}
+				}, true);
+			}
+		}
+	} ])
 	// Allow for insert/update/delete operations on a list of text inputs
 	.directive('flexibleList', [ function() {
 		return {
