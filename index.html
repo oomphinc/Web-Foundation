@@ -1,21 +1,36 @@
 <!DOCTYPE html>
-<html ng-app="W3FODB">
+<html ng-app="W3FWIS">
 	<head>
 		<base href="/" />
-		<title>Web Foundation 2014 Survey</title>
+		<title>World Wide Web Foundation Web Index Survey 2014</title>
 
 		<script src="js/jquery-1.11.0.min.js"></script>
+		<script src="js/underscore-min.js"></script>
+		<script src="js/markdown.js"></script>
 		<script src="js/angular.min.js"></script>
 		<script src="js/angular-cookies.min.js"></script>
 		<script src="js/angular-route.min.js"></script>
+		<script src="js/angular-sanitize.min.js"></script>
 		<script src="js/w3f-angular-spreadsheets.js"></script>
 		<script src="js/w3f-survey.js"></script>
 
 		<link rel="stylesheet" href="styles.css" />
 	</head>
 
-  <body>
-		<div id="wrapper" ng-controller="W3FSurveyController" with-rail>
+  <body ng-controller="W3FSurveyController">
+		<ul class="wis-progress">
+			<li ng-repeat="section in sectionOrder" ng-style="{ width: (100 / sectionOrder.length) + '%' }" update-on-response>
+				<a ng-click="navigate(section)">
+					{{ section }}
+					<span class="progress" ng-if="sectionQuestions.length > 0">{{ sectionAnswers.length }} / {{ sectionQuestions.length }}</span>
+					<span class="progress-bar-container">
+						<span class="progress-bar" ng-style="{ width: sectionQuestions.length ? sectionAnswers.length / sectionQuestions.length * 100 + '%' : '100%', backgroundColor: (sectionQuestions.length > 0 ? (sectionQuestions.length == sectionAnswers.length ? '#ff8' : '#f88') : '#eef') }"></span>
+					</span>
+				</a>
+			</li>
+		</ul>
+						
+		<div id="wrapper" with-rail>
 			<header id="branding">
 				<h1>World Wide Web Foundation</h1>
 				<h2>Web Index Survey - 2014</h2>

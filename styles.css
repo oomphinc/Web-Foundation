@@ -23,6 +23,53 @@ textarea {
 	box-sizing: border-box;
 }
 
+.wis-progress {
+	background: #ddd;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	border-bottom: 1px solid #ccc;
+	height: 1.5em;
+	list-style: none;
+	font-size: .8em;
+	margin: 0;
+	z-index: 1;
+	padding: 0;
+}
+	.wis-progress li {
+		display: block;
+		height: 100%;
+		margin: 0;
+		overflow: hidden;
+		line-height: 1.5em;
+		float: left;
+	}
+		.wis-progress a {
+			display: block;
+			height: 100%;
+			margin: 0 2px;
+			position: relative;
+			padding: 0 2px;
+		}
+		.wis-progress a span.progress-bar-container {
+			display: block;
+			height: 100%;
+			width: 100%;
+			position: absolute;
+			left: 0;
+			top: 0;
+			z-index: -1;
+			border-left: 1px solid #ccc;
+			border-right: 1px solid #ccc;
+		}
+		.wis-progress a span.progress-bar {
+			position: absolute;
+			left: 0;
+			top: 0;
+			height: 100%;
+			background-color: #8f8;
+		}
 .section {
 	margin: 1.5em;
 	clear: both;
@@ -71,6 +118,7 @@ textarea {
 #wrapper {
 	max-width: 1024px;
 	margin: 1em;
+	margin-top: 1.75em;
 }
 
 #loading {
@@ -98,7 +146,7 @@ textarea {
 #sections {
 	position: fixed;
 	left: 0;
-	top: 1em;
+	top: 2em;
 	padding: 0;
 	overflow: hidden;
 	transition: width 0.4s;

@@ -12,9 +12,9 @@
 	</nav>
 
 	<section ng-repeat="sectionid in sectionOrder" ng-init="section=sections[sectionid]" class="section" class="ng-hide" ng-if="sectionid == activeSection">
-		<h2>{{ section.title.replace('[country]', country) }}</h2>
+		<h2>{{ section.title | country }}</h2>
 
-		<p>{{ section.description.replace('[country]', country) }}</p>
+		<section class="section-description" ng-bind-html="section.description | markdown"></section>
 
 		<div ng-repeat="question in section.questions">
 			<ng-include src="'tpl/question.html'"></ng-include>
