@@ -1,32 +1,32 @@
-<div class="question question-{{ question.type }}" ng-init="responses[question.questionid]">
+<div class="question question-{{ question.type }}" ng-init="response = responses[question.questionid]">
 	<h3>{{ question.questionid }}: <em><label for="question-{{ question.questionid }}">{{ question.question }}</label></em></h3>
 
 	<div ng-if="question.type == 'Scale'">
-		<select ng-model="responses[question.questionid].response" class="answer-select scale-select" id="question-{{ question.questionid }}" ng-options="val.toString() as val for val in [].range(11)">
+		<select ng-model="response.response" class="answer-select scale-select" id="question-{{ question.questionid }}" ng-options="val.toString() as val for val in [].range(11)">
 			<option value="">-</option>
 		</select>
 	</div>
 
 	<div ng-if="question.type == 'Sum'" class="answer-select answer-sum">
-		<input type="text" readonly="readonly" size="3" value="{{ sum(question.subquestions) }}" id="question-{{ question.questionid }}" />
+		<input type="text" readonly="readonly" size="3" sum-question="question" ng-model="response.response" id="question-{{ question.questionid }}" />
 	</div>
 
 	<div ng-if="question.type == 'Option'">
-		<select ng-options="item.weight.toString() as item.content for item in question.option" ng-model="responses[question.questionid].response" class="answer-select option-select" id="question-{{ question.questionid }}">
+		<select ng-options="item.weight.toString() as item.content for item in question.option" ng-model="response.response" class="answer-select option-select" id="question-{{ question.questionid }}">
 			<option value="">-</option>
 		</select>
 
 		<p ng-repeat="supporting in question.supporting" class="supporting">
 			<label ng-if="!supporting.values || supporting.values.indexOf(response.response) > -1">
 				{{ supporting.content }}
-				<textarea ng-model="responses[question.questionid][supporting.id]"></textarea>
+				<textarea ng-model="response[supporting.id]"></textarea>
 			</label>
 		</p>
 	</div>
 
 	<label class="confidence-level" ng-if="question.wantconfidence == 'Yes'">
 		<span>Confidence Level</span>
-		<select ng-model="responses[question.questionid].confidence" ng-options="val.toString() as val for val in [].range(11)">
+		<select ng-model="response.confidence" ng-options="val.toString() as val for val in [].range(11)">
 			<option value="">-</option>
 		</select>
 	</label>
@@ -35,7 +35,7 @@
 		<label>
 			<span>Please cite example URLs</span>
 
-			<flexible-list ng-model="responses[question.questionid].example" />
+			<flexible-list ng-model="response.example" />
 		</label>
 	</div>
 
@@ -53,6 +53,6 @@
 
 		<p ng-if="question.justificationnote">{{ question.justificationnote }}</p>
 
-		<textarea ng-model="responses[question.questionid].justification"></textarea>
+		<textarea ng-model="response.justification"></textarea>
 	</div>
 </div>

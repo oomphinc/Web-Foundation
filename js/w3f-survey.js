@@ -32,7 +32,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 	})
 
 	// Top-level controller
-	.controller('W3FSurveyController', [ 'spreadsheets', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', function(gs, $scope, $rootScope, $q, $cookies, $routeParams, $interval) {	
+	.controller('W3FSurveyController', [ 'spreadsheets', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', function(gs, $scope, $rootScope, $q, $cookies, $routeParams, $interval) {
 		var masterKey = '0AokPSYs1p9vhdEdjeUluaThWc2RqQnI0c21oN1FaYUE';
 		var answerKey = $routeParams.answerKey;
 		var answerSheet;
@@ -47,31 +47,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		// Responses by question ID, as a watched scope model
 		$rootScope.responses = {};
 
-		// Responses before any changes. Necessary because of bugs in $scope.$watchCollection 
-		// (https://github.com/angular/angular.js/pull/5661)
-		$rootScope.oldResponses = {};
-
 		// Response URLs by question ID
 		$rootScope.responseLinks = {};
-
-		// Allow use of "Sum" function for summing sub-question response values (the numbers, anyway)
-		$rootScope.sum = function(questions) {
-			var sum = 0;
-
-			angular.forEach(questions, function(question) {
-				var number = parseInt($rootScope.responses[question.questionid].response);
-
-				if(!isNaN(number)) {
-					sum += number;
-				}
-
-				if(question.subquestions && question.subquestions.length) {
-					sum += $rootScope.sum(question.subquestions);
-				}
-			});
-
-			return sum;
-		};
 
 		// Set up an initial page
 		$rootScope.activeSection = $cookies.section;
@@ -105,7 +82,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				saving: size
 			};
 
-			for(var qid in queue) {
+			_.each(queue, function(response, qid) {
 				var values = $rootScope.responses[qid];
 
 				values = $.extend({}, {
@@ -140,8 +117,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						}
 					}
 
-					$rootScope.oldResponses[qid] = response;
-
 					$rootScope.status = {
 						message: "Last saved " + (function(d) { return d.toDateString() + ", " + d.toLocaleTimeString() })(new Date()),
 						clear: 3000
@@ -153,7 +128,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				})['finally'](function() {
 					delete processQueue[qid];
 				});
-			}
+			});
 
 			queue = {};
 		}, 3000);
@@ -204,11 +179,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						option.content = matches[2];
 					});
 
-					$rootScope.responses[question.questionid] = {};
+					$rootScope.responses[question.questionid] = {
+						questionid: question.questionid,
+						response: '',
+					};
 
 					// Update progress bar as responses are given
 					$rootScope.$watchCollection('responses["' + question.questionid + '"]', function(newValue) {
-						$rootScope.$broadcast('response-updated');
+						$rootScope.$broadcast('response-updated', newValue);
 					});
 
 					// Nest subquestions here
@@ -251,6 +229,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						$rootScope.country = config[0].country;
 					});
 
+					answerSheet = sheets['Answers'];
+
 					// Populate answers. This can be done in parralel with control data load
 					// since the data sets are distinct
 					gs.getRows(answerKey, sheets['Answers'], $rootScope.accessToken).then(function(answers) {
@@ -284,8 +264,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 									}
 								}
 							});
-
-							$rootScope.oldResponses[answer.questionid] = _.clone(response);
 						});
 
 						// Only now that the answer sheet has been loaded
@@ -297,12 +275,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						// BUG: oldValue and newValue are the same in this call from $watchCollection -
 						// See: https://github.com/angular/angular.js/issues/2621. 
 						_.each(_.keys($rootScope.questions), function(qid) {
-							$rootScope.$watchCollection("responses['" + qid + "']", function(oldValue, newValue) {
-								if(!angular.equals(newValue, $rootScope.oldResponses[qid])) {
+							$rootScope.$watch("responses['" + qid + "']", function(oldValue, newValue) {
+								if(oldValue !== newValue) {
 									queue[qid] = newValue;
-									$rootScope.oldResponses[qid] = newValue;
 								}
-							});
+							}, true);
 						});
 
 						deferred.resolve();
@@ -396,7 +373,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		}
 	} ])
 
-	// Create a rail exactly the size of the sections menu
+	// Set sectionAnswers and sectionQuestions scope variables for a particular
+	// section when a response is changed
 	.directive('updateOnResponse', [ '$timeout', function($timeout) {
 		return {
 			link: function($scope, element, attrs) {
@@ -404,7 +382,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					$scope.sectionAnswers = [];
 					$scope.sectionQuestions = _.filter($scope.questions, function(q) { 
 						if(q.section == $scope.section) {
-							if(!_.isEmpty($scope.responses[q.questionid].response)) {
+							if($scope.responses[q.questionid].response != undefined && $scope.responses[q.questionid].response != '') {
 								$scope.sectionAnswers.push($scope.responses[q.questionid]);
 							}
 
@@ -443,6 +421,49 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			}
 		}
 	} ])
+
+	// Drive a "sum" type question, which has for a value the sum of all
+	// of its subquestion's responses
+	.directive('sumQuestion', [ '$rootScope', function($rootScope) {
+		return {
+			link: function($scope, element, attrs) {
+				var question = $scope.$eval(attrs.sumQuestion);
+				
+				// Update response when any child value changes
+				var update = function() {
+					function computeSum(questions) {
+						var sum = 0;
+
+						angular.forEach(questions, function(q) {
+							var number = parseInt($scope.responses[q.questionid].response);
+
+							if(!isNaN(number)) {
+								sum += number;
+							}
+
+							if(q.subquestions && q.subquestions.length) {
+								sum += computeSum(q.subquestions);
+							}
+						});
+
+						return sum;
+					}
+
+					$rootScope.responses[question.questionid].response = computeSum(question.subquestions);
+				}
+
+				// Listen on all sub-question responses (and their subquestions)
+				var listenRecursively = function(questions) {
+					angular.forEach(questions, function(question) {
+						$scope.$watch('responses["' + question.questionid + '"].response', update);
+					});
+				}
+
+				listenRecursively(question.subquestions);
+			}
+		}
+	} ])
+
 	// Allow for insert/update/delete operations on a list of text inputs
 	.directive('flexibleList', [ function() {
 		return {
