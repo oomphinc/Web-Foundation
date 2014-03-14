@@ -50,6 +50,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		// Response URLs by question ID
 		$rootScope.responseLinks = {};
 
+		// Notes by Question ID
+		$rootScope.notes = {};
+
 		// Set up an initial page
 		$rootScope.activeSection = $cookies.section;
 
@@ -179,11 +182,15 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						option.content = matches[2];
 					});
 
+					// Put responses here. Initialize with blank response
 					$rootScope.responses[question.questionid] = {
 						questionid: question.questionid,
 						response: '',
 					};
 
+					// Put notes here.
+					$rootScope.notes[question.questionid] = [];
+					
 					// Update progress bar as responses are given
 					$rootScope.$watchCollection('responses["' + question.questionid + '"]', function(newValue) {
 						$rootScope.$broadcast('response-updated', newValue);
@@ -242,7 +249,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 							$rootScope.responseLinks[answer.questionid] = answer[':links'];
 
-							var response = $rootScope.responses[answer.questionid] 
+							var response = $rootScope.responses[answer.questionid]; 
 
 							// Copy all response properties from sheet into row
 							for(var col in answer) {
@@ -284,6 +291,19 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 						deferred.resolve();
 					});
+
+					// Populate notes for each question
+					gs.getRows(answerKey, sheets['Notes'], $rootScope.accessToken).then(function(rows) {
+						angular.forEach(rows, function(note) {
+							if(!$rootScope.notes[note.questionid]) {
+								console.log("Note with qid=" + note.questionid + " does not correspond to any survey question");
+								return;
+							}
+
+							$rootScope.notes[note.questionid].push(note);	
+						});
+					});
+
 				});
 			}
 
@@ -420,6 +440,54 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				}, true);
 			}
 		}
+	} ])
+
+	// Attach notes to a question. Evaluate argument then evaluate against $scope
+	.directive('notes', [ '$rootScope', function($rootScope) {
+		return {
+			templateUrl: 'tpl/notes.html',
+			transclude: true,
+			restrict: 'E',
+			scope: {},
+
+			link: function($scope, element, attrs) {
+				// Determine the expression within 'response' that refers to the field being noted
+				$scope.field = $scope.$eval(attrs.field);
+
+				// Import scope variables
+				$scope.question = $scope.$parent.question;
+				$scope.notes = _.filter( $rootScope.notes[$scope.question.questionid], function(note) { return note.field == $scope.field; });
+
+				$scope.addNote = function() {
+					$rootScope.notes[$scope.question.questionid].push({
+						questionid: $scope.question.questionid,
+						field: $scope.field,
+						note: $scope.newNote
+					});
+
+					$scope.newNote = '';
+					$scope.notes = _.filter( $rootScope.notes[$scope.question.questionid], function(note) { return note.field == $scope.field; });
+				}
+
+				element.addClass('notable');
+
+				$rootScope.$broadcast('close-notes');
+
+				// Close notes when user clicks outside notes... TODO: Optimize. 
+				// This Takes a long time for all notes boxes to receive this broadcast.
+				$scope.$on('close-notes', function() {
+					$scope.openNotes = false;
+				});
+			}
+		}
+	} ])
+
+	.run([ '$rootScope', function($rootScope) {
+		$(document).on('click', function(ev) {
+			if($(ev.target).closest('.notes, .open-notes').length == 0) {
+				$rootScope.$broadcast('close-notes');
+			}
+		});
 	} ])
 
 	// Drive a "sum" type question, which has for a value the sum of all
