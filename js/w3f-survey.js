@@ -50,8 +50,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		// Responses by question ID, as a watched scope model
 		$rootScope.responses = {};
 
+		// We're loading... !
+		$rootScope.loading = true;
+
 		// Notes by Question ID
 		$rootScope.notes = {};
+
+		// Anonymous until proven otherwise
+		$rootScope.anonymous = true;
 
 		// Links to answer sheet rows by question id
 		$rootScope.links = {
@@ -88,8 +94,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		// Three-second timer
 		$interval(function() {
 			var size = 0;
-
-			$rootScope.status = false;
 
 			// Process a queue for the two sections
 			_.each([ 'responses', 'notes' ], function(section) {
@@ -267,6 +271,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 							$rootScope.error = "Couldn't determine country!";
 						}
 
+						// TODO: Verify user's role here based on Control sheet comparison of hashed IDs
+						$rootScope.anonymous = false;
+
 						$rootScope.country = config[0].country;
 					});
 
@@ -331,7 +338,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 							}, true);
 						});
 
-						deferred.resolve();
+						deferred.resolve({
+							message: "Loaded",
+							success: true,
+							clear: 3000,
+						});
 					});
 
 					noteSheet = sheets['Notes'];
@@ -363,10 +374,13 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 					if(answerKey) {
 						$rootScope.loading = "Loading Answers...";
+
 						loadAnswers();
 					}
-					else {
-						deferred.resolve();
+					else {	
+						deferred.resolve({ 
+							message: "You are taking this survey anonymously and changes will not be saved."
+						});
 					}
 				});
 			});
@@ -399,17 +413,15 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				}
 
 				// Load the survey
-				populate(sheets)['finally'](function() {
-					$rootScope.loading = false;
-					$rootScope.status = {
-						message: "Loaded",
-						success: true,
-						clear: 3000,
-					};
-
-					$rootScope.loaded = true;
+				populate(sheets).then(function(status) {
+					$rootScope.status =	status;
 
 					$rootScope.$broadcast('sections-loaded');
+				}, function(error) {
+					$rootScope.error = error
+				})
+				['finally'](function(status) {
+					$rootScope.loading = false;
 				});
 			});
 		};
@@ -493,18 +505,25 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 	.directive('notes', [ '$rootScope', function($rootScope) {
 		return {
 			templateUrl: 'tpl/notes.html',
-			transclude: true,
 			restrict: 'E',
 			scope: {},
 
 			link: function($scope, element, attrs) {
 				// Determine the expression within 'response' that refers to the field being noted
 				$scope.field = $scope.$eval(attrs.field);
+				$scope.particpant = $rootScope.participant;
 
 				// Import scope variables
 				$scope.question = $scope.$parent.question;
-				$scope.notes = _.filter( $rootScope.notes[$scope.question.questionid], function(note) { return note.field == $scope.field; });
 
+				var refreshNotes = function() {
+					$scope.notes = _.filter( $rootScope.notes[$scope.question.questionid], function(note) { return note.field == $scope.field; });
+				}
+
+				refreshNotes();
+
+				$rootScope.$watch('notes["' + $scope.question.questionid + '"]', refreshNotes, true);
+				
 				$scope.addNote = function() {
 					$rootScope.notes[$scope.question.questionid].push({
 						questionid: $scope.question.questionid,
@@ -515,7 +534,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					});
 
 					$scope.newNote = '';
-					$scope.notes = _.filter( $rootScope.notes[$scope.question.questionid], function(note) { return note.field == $scope.field; });
 				}
 
 				element.addClass('notable');
@@ -525,7 +543,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				// Close notes when user clicks outside notes... TODO: Optimize. 
 				// This Takes a long time for all notes boxes to receive this broadcast.
 				$scope.$on('close-notes', function() {
-					$scope.openNotes = false;
+					if($scope.opened) {
+						$scope.opened = false;
+					}
 				});
 			}
 		}
@@ -535,6 +555,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		$(document).on('click', function(ev) {
 			if($(ev.target).closest('.notes, .open-notes').length == 0) {
 				$rootScope.$broadcast('close-notes');
+			}
+			if($(ev.target).closest('.fancy-select').length == 0) {
+				$rootScope.$broadcast('close-popups');
 			}
 		});
 	} ])
@@ -584,57 +607,113 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 	// Allow for insert/update/delete operations on a list of text inputs
 	.directive('flexibleList', [ function() {
 		return {
-			replace: true,
+			templateUrl: 'tpl/notes.html',
 			restrict: 'E',
+
 			link: function($scope, element, attrs) {
 				// Force this model to be an array
 				if(typeof $scope.$eval(attrs.ngModel) == 'undefined') {
 					$scope.$eval(attrs.ngModel + '=[]');
 				}
 
-				function render() {
-					var $ul = $('<ul>');
+				$scope.list = $scope.$eval(attrs.ngModel);
 
-					angular.forEach($scope.$eval(attrs.ngModel), function(item) {
-						var 
-							$li = $('<li>'),
-							$del = $('<a class="delete-item">x</a>');
-							$input = $('<input class="item">');
+				$scope.$watch('list', function(newValue, oldValue) {
+				});
+			}
+		}
+	} ])
 
-						$input.val(item);
-						$li.append($del);
-						$li.append($input);
-						$ul.append($li);
+	// Fancy select box
+	.directive('fancySelect', [ '$rootScope', '$timeout', function($rootScope, $timeout) {
+		return {
+			restrict: 'E',
+			templateUrl: 'tpl/fancy-dropdown.html',
+			replace: true,
+			compile: function(element, attrs) {
+				var $select = element.find('select');
+				var selectedIndex = -1;
 
-						$del.on('click', function() {
-							var index = $ul.find('.delete-item').index(this);
-							$scope.$eval(attrs.ngModel + '.splice(' + index + ',1)');
-							render();
-						});
-					});
+				_.each(_.clone(element[0].attributes), function(attr) {
+					if(attr.name != 'class') {
+						$select.attr(attr.name, attr.value);
+						element.removeAttr(attr.name);
+					}
+				});
 
-					var $li = $('<li>');
-					var $add = $('<a class="add-item">+ add</a>');
-					
-					$li.append($add);
-					$ul.append($li);
-
-					$add.on('click', function() {
-						$scope.$eval(attrs.ngModel + '.push("")');
-						render();
-					});
-
-					$ul.on('change keyup', 'input', function() {
-						var index = $ul.find('input').index(this);
-
-						$scope.$eval(attrs.ngModel + '[' + index + ']=' + JSON.stringify(this.value));
-					});
-
-					element.html('');
-					element.append($ul);
+				if(attrs.withNull) {
+					$select.append($('<option value="">').text(attrs.withNull));
+					selectedIndex = 0;
 				}
 
-				render();
+				return function($scope, element, attrs, transclude) {
+					var $select = element.find('select');
+					var $options = element.find('.fancy-select-options');
+
+					$scope.selectedIndex = selectedIndex;
+
+					// Keep a local model containing the select's <option>s
+					//
+					// The angular code for managing the select <option>s is turbly
+					// complicated and it's best to just avoid having to use it at all,
+					// use the DOM to notify of changes instead
+					function update() {
+						$scope.items = [];
+
+						$select.find('option').each(function() {
+							$scope.items.push(this.textContent);
+						});
+
+						$timeout(function() {
+							var $clone = $('<div class="fancy-select">');
+
+							$clone.html(element.html());
+							$clone.css('width', '');
+
+							var	$dropdown = $clone.find('.fancy-select-options');
+
+							$clone.css({ visibility: 'hidden', position: 'absolute', top: 0 });
+							$dropdown.removeClass('ng-hide').css('display', 'block');
+							$('body').append($clone);
+							element.css({ width: $dropdown.outerWidth() });
+							$clone.remove();
+						}, 0);
+
+						$scope.selectedIndex = $select[0].selectedIndex;
+					}
+
+					var lastOptions = [];
+
+					$scope.$parent.$watch(function() {
+						var options = _.map($select[0].options, function(option) {
+							return [ option.value, option.textContent ];
+						});
+
+						if(!_.isEqual(options, lastOptions) || $select[0].selectedIndex != $scope.selectedIndex) {
+							update();
+							lastOptions = options;
+						}
+					});
+
+					update();
+
+					// Use the DOM to notify angular by just changing the value
+					$scope.select = function(index) {
+						$timeout(function() {
+							$select[0].selectedIndex = index;
+							$select.trigger('change');
+						}, 0);
+
+						$scope.opened = false;
+						$scope.selectedIndex = index;
+					}
+
+					$scope.$on('close-popups', function() {
+						if($scope.opened) {
+							$scope.opened = false;
+						}
+					});
+				}
 			}
 		}
 	} ]);

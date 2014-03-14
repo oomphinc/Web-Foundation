@@ -1,48 +1,71 @@
 <div class="question question-{{ question.type }}" ng-init="response = responses[question.questionid]">
+	<div ng-if="question.type == 'Option'" class="response">
+		<notes ng-if="!anonymous" field="'response'" />
+
+		<fancy-select ng-options="item.weight.toString() as item.content for item in question.option" ng-model="response.response" class="answer-select option-select" id="question-{{ question.questionid }}" with-null="-" />
+	</div>
+
+	<div ng-if="question.type == 'Sum'" class="answer-sum">
+		{{ response.response }}
+	</div>
+
 	<div class="question-title">
-		<notes field="'response'" />
 		<h3>
 			{{ question.questionid }}: <em><label for="question-{{ question.questionid }}">{{ question.question }}</label></em>
 		</h3>
 	</div>
 
-	<div ng-if="question.type == 'Scale'">
-		<div class="scale-response">
-			<select ng-model="response.response" class="answer-select scale-select" id="question-{{ question.questionid }}" ng-options="val.toString() as val for val in [].range(11)">
-				<option value="">-</option>
-			</select>
-		</div>
+	<p ng-if="question.helplink" class="helplink">
+		<a href="{{ helplink }}" target="w3f-help">Further question guidance &rarr;</a>
+	</p>
+	
+	<div ng-if="question.wantjustification == 'Yes'" class="justification">
+		<notes ng-if="!anonymous" field="'justification'" />
+
+		<h4>Justification and sources (include URLs)</h4>
+
+		<p ng-if="question.justificationnote">{{ question.justificationnote }}</p>
+
+		<textarea ng-model="response.justification"></textarea>
 	</div>
 
-	<div ng-if="question.type == 'Sum'" class="answer-select answer-sum">
-		<input type="text" readonly="readonly" size="3" sum-question="question" ng-model="response.response" id="question-{{ question.questionid }}" />
-	</div>
 
-	<div ng-if="question.type == 'Option'" class="response">
-
-		<select ng-options="item.weight.toString() as item.content for item in question.option" ng-model="response.response" class="answer-select option-select" id="question-{{ question.questionid }}">
-			<option value="">-</option>
-		</select>
-	</div>
-
-	<div ng-if="supporting && !supporting.values || supporting.values.indexOf(response.response) > -1" ng-repeat="supporting in question.supporting" class="response supporting">
+	<div ng-if="supporting && !supporting.values || supporting.values.indexOf(response.response) > -1" ng-repeat="supporting in question.supporting" class=" supporting">
 		<label>
-			<notes field="supporting.id" />
 			{{ supporting.content }}
 			<textarea ng-model="response[supporting.id]"></textarea>
 		</label>
 	</div>
 
+	<div ng-if="question.type == 'Scale'" class="scale-response">
+		<span class="score-container">
+			<notes ng-if="!anonymous" field="'response'" />
+
+			<label>
+				Score:
+				<fancy-select ng-model="response.response" class="answer-select scale-select" id="question-{{ question.questionid }}" ng-options="val.toString() as val for val in [].range(11)" with-null="-" />
+			</label>
+		</span>
+	</div>
+
 	<div class="confidence" ng-if="question.wantconfidence == 'Yes'">
-		<notes field="'confidence'" />
-
 		<label class="confidence-level">
-			<span>Confidence Level</span>
+			<span>Confidence:</span>
 
-			<select ng-model="response.confidence" ng-options="val.toString() as val for val in [].range(11)">
-				<option value="">-</option>
-			</select>
+			<fancy-select ng-model="response.confidence" ng-options="val.toString() as val for val in [].range(11)" with-null="-" />
 		</label>
+	</div>
+
+	<div ng-if="question.guidance.length" class="guidance-container">
+		<h4>Guidance:</h4>
+
+		<div>
+			<div class="guidance" ng-repeat="guidance in question.guidance" ng-style="{ maxWidth: (100 / question.guidance.length) + '%' }">
+				<p>
+					{{ guidance.weight }} - {{ guidance.content }}
+				</p>
+			</div>
+		</div>
 	</div>
 
 	<div ng-if="question.wantexamples == 'Yes'">
@@ -52,23 +75,12 @@
 			<flexible-list ng-model="response.example" />
 		</label>
 	</div>
+	
+	<div ng-if="question.hasprivatenotes == 'Yes'" class="private-notes">
+		<h4>Private notes: for reviewer / coordinator only.</h4>
 
-	<div ng-if="question.guidance.length">
-		<h4>Guidance:</h4>
-		<p class="guidance" ng-repeat="guidance in question.guidance">
-			{{ guidance.weight }} - {{ guidance.content }}
-		</p>
+		<textarea ng-model="response.privatenotes"></textarea>
 	</div>
 
 	<ng-include src="'tpl/question.html'" ng-repeat="question in question.subquestions"></ng-include>
-	
-	<div ng-if="question.wantjustification == 'Yes'" class="justification">
-		<notes field="'justification'" />
-
-		<h4>Justification and sources (include URLs)</h4>
-
-		<p ng-if="question.justificationnote">{{ question.justificationnote }}</p>
-
-		<textarea ng-model="response.justification"></textarea>
-	</div>
 </div>

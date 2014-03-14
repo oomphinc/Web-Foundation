@@ -21,6 +21,7 @@ textarea {
 	width: 100%;
 	padding: .5em;
 	height: 4.5em;
+	margin: .5em 0;
 	box-sizing: border-box;
 }
 
@@ -79,14 +80,23 @@ textarea {
 }
 
 .question {
+	float: left;
+	width: 100%;
+	clear: both;
 	position: relative;
 	margin-top: 5em;
 }
+.question-title {
+	margin-bottom: .5em;
+}
+	.question-title h3 {
+		margin: 0;
+	}
 	/* Allow notes to position themselves relative to these */
-	.question .question-title,
 	.question .confidence,
 	.question .justification,
 	.question .supporting,
+	.question .guidance-container,
 	.question .examples {
 		position: relative;
 	}
@@ -98,20 +108,57 @@ textarea {
 		margin: .5em 0 .5em 1em;
 	}
 	.question .question-title {
-		padding-right: 4em;
 		line-height: 24px;
 
-	}
-	.question .answer-select {
-		position: absolute;
-		right: 0;
-		top: 0;
 	}
 	.question .level-select {
 		position: absolute;
 		right: 0;
 		top: .75em;
 		font-size: 20px;
+	}
+
+	.question .confidence {
+		font-size: 1.25em;
+	}
+
+	.question-Scale .scale-response,
+	.question-Scale .confidence {
+		margin-top: .5em;
+		font-size: 1.25em;
+		text-align: center;
+	}
+
+	.question-Scale .scale-response {
+		float: left;
+		width: 50%;
+	}
+		.question-Scale .scale-response .score-container {
+			position: relative;
+		}
+	.question-Scale .confidence {
+		float: right;
+		width: 50%;
+	}
+
+	.question-Option .response {
+		float: right;
+	}
+	.question-Options .open-notes {
+	}
+
+	.question-Option .fancy-select-options {
+		left: auto !important;
+		right: 0;
+	}
+	.answer-sum {
+		float: right;
+		padding-left: 3em;
+		color: white;
+		font-size: 2em;
+		background: #494;
+		padding: .2em .5em;
+		border-radius: .75em;
 	}
 
 .options {
@@ -123,13 +170,28 @@ textarea {
 		padding: .5em;
 	}
 
-.guidance {
-	color: #777;
+.guidance-container {
+	float: left;
+	clear: both;
+	width: 100%;
 }
+	.guidance-container h4 {
+		clear: both;
+	}
+	.guidance {
+		color: #777;
+		min-width: 130px;
+		float: left;
+		box-sizing: border-box;
+	}
+	.guidance p {
+		margin: 0 .5em .5em;
+	}
 
 .open-notes {
 	position: absolute;
 	left: -3.25em;
+	top: -.25em;
 	height: 24px;
 	text-indent: 0;
 	color: #fff;
@@ -173,6 +235,8 @@ textarea {
 		background-color: #fcfac6;
 		border: 1px solid #feef9c;
 		box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+		font-size: 12px;
+		text-align: left;
 	}
 		.notes .note-count {
 			top: 0;
@@ -188,7 +252,6 @@ textarea {
 			color: #666;
 			height: 1em;
 			width: 1em;
-			font-size: 1.25em;
 			border-radius: .5em;
 		}
 			.notes .close-notes:hover {
@@ -315,3 +378,55 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 		display: block;
 		padding: .5em;
 	}
+
+
+/**
+ * Angular fancy dropdown
+ */
+.fancy-select { 
+	display: inline-block; 
+	position: relative;
+}
+.fancy-select select {
+	display: none;
+}
+	.fancy-select .fancy-select-selected {
+		display: block;
+		border: 1px solid #f0f0f0;
+		background-image: -webkit-linear-gradient(top,#f5f5f5,#f1f1f1);
+		background: #f8f8f8;
+		cursor: pointer;
+		width: 100%;
+		box-sizing: border-box;
+	}
+	.fancy-select .fancy-select-selected,
+	.fancy-select .fancy-select-option {
+		padding: .25em .5em;
+		white-space: nowrap;
+	}
+		.fancy-select .fancy-select-options {
+			margin: 0;
+			padding: 0;
+			text-align: left;
+			display: none;
+			position: absolute;
+			left: 0;
+			top: 100%;
+			list-style: none;
+			background: #fff;
+			border: 1px solid rgba(0,0,0,.2);
+			background-color: #fff;
+			z-index: 10;
+			box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+			transition: opacity 0.218s;
+		}
+		.fancy-select .fancy-select-open .fancy-select-options {
+			display: block;
+		}
+			.fancy-select .fancy-select-open .fancy-select-option {
+				cursor: pointer;
+			}
+			.fancy-select .fancy-select-open .fancy-select-option:hover {
+				background-color: #eee;
+			}
+

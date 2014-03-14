@@ -1,15 +1,21 @@
-<div class="open-notes" title="{{ notes.length }} Comments" ng-class="{ 'with-notes': notes.length > 0 }" ng-click="$rootScope.$broadcast('close-notes'); openNotes=true;">
+<div class="open-notes" title="{{ notes.length }} Comments" ng-class="{ 'with-notes': notes.length > 0 }" ng-click="$rootScope.$broadcast('close-notes'); opened=true;">
 
 				
 	<span class="icon-bubble"></span> <span class="comment-count">{{ notes.length }}</span>
 </div>
 
-<div class="notes ng-hide" ng-show="openNotes">
+<div class="notes ng-hide" ng-show="opened">
 	<ng-pluralize count="notes.length" when="{ 'one': '1 Note', 'other': '{} Notes' }" class="note-count"></ng-pluralize>
 
-	<div class="close-notes icon-cancel-circle" ng-click="openNotes=false"></div>
+	<div class="close-notes icon-cancel-circle" ng-click="opened=false"></div>
 
-	<div class="note" ng-repeat="note in notes" ng-if="note.field == field" ng-init="text = note.party + ': ' + note.note" ng-bind-html="text | markdown">
+	<div class="note" ng-repeat="note in notes" ng-if="note.field == field" ng-init="text = note.party + ': ' + note.note">
+		<div class="note-actions">
+			<a class="note-edit" ng-if="note.party == participant"></a>
+			<a class="note-delete" ng-if="note.party == participant"></a>
+			<a class="note-resolve" ng-if="note.party != participant && !note.resolved"></a>
+		</div>
+		<div ng-bind-html="text | markdown"></div>
 	</div>
 
 	<button class="add-note" ng-click="addingNote=true" ng-show="!addingNote"><span class="icon-pencil"></span> Add Note</button>

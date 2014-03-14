@@ -14,7 +14,7 @@
 	</span>
 </div>
 
-<div class="ng-hide" ng-show="loaded">
+<div class="ng-hide" ng-show="!loading">
 	<nav id="sections">
 		<ul>
 			<li ng-repeat="section in sectionOrder" ng-class="{ active: activeSection == section }">
@@ -26,7 +26,7 @@
 	<section ng-repeat="sectionid in sectionOrder" ng-init="section=sections[sectionid]" class="section" class="ng-hide" ng-if="sectionid == activeSection">
 		<h2>{{ section.title | country }}</h2>
 
-		<section class="section-description" ng-bind-html="section.description | markdown"></section>
+		<div class="section-description" ng-bind-html="section.description | markdown"></div>
 
 		<div ng-repeat="question in section.questions">
 			<ng-include src="'tpl/question.html'"></ng-include>
