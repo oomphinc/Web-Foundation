@@ -35,7 +35,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 	.controller('W3FSurveyController', [ 'spreadsheets', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', function(gs, $scope, $rootScope, $q, $cookies, $routeParams, $interval) {
 		var masterKey = '0AokPSYs1p9vhdEdjeUluaThWc2RqQnI0c21oN1FaYUE';
 		var answerKey = $routeParams.answerKey;
-		var answerSheet;
+		var answerSheet, noteSheet;
+
+		// Who's doing the Survey? Determined by answer sheet, defaults to "Anonymous"
+		$rootScope.participant = "Anonymous";
 
 		// Section order and descriptors
 		$rootScope.sectionOrder = [];
@@ -47,11 +50,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		// Responses by question ID, as a watched scope model
 		$rootScope.responses = {};
 
-		// Response URLs by question ID
-		$rootScope.responseLinks = {};
-
 		// Notes by Question ID
 		$rootScope.notes = {};
+
+		// Links to answer sheet rows by question id
+		$rootScope.links = {
+			responses: {},
+			notes: {}
+		};
 
 		// Set up an initial page
 		$rootScope.activeSection = $cookies.section;
@@ -66,74 +72,102 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		// Manage updating the answer sheet 
 		// 
 
-		// Queue up changes as answers are updated
-		var queue = {};
+		// Queue up changes as responses or notes are updated
+		var queue = {
+			responses: {},
+			notes: {}
+		};
 		
-		// Keep timers for processes here, cancelling pending changes to an answer
+		// Keep timers for processes here, cancelling pending changes to an update process
 		// when newer changes have occured
-		var processQueue = {};
+		var processQueue = {
+			responses: {},
+			notes: {}
+		};
 
 		// Three-second timer
 		$interval(function() {
-			var size = _.size(queue);
+			var size = 0;
 
-			if(size == 0) {
-				return;
-			}
+			$rootScope.status = false;
 
-			$rootScope.status = {
-				saving: size
-			};
+			// Process a queue for the two sections
+			_.each([ 'responses', 'notes' ], function(section) {
+				_.each(queue[section], function(response, qid) {
+					var q = queue[section];
+					var pq = processQueue[section];
 
-			_.each(queue, function(response, qid) {
-				var values = $rootScope.responses[qid];
+					var links = $rootScope.links[section];
+					var values = $rootScope[section][qid];
 
-				values = $.extend({}, {
-					response: values.response, 
-					 justification: values.justification,
-					 confidence: values.confidence,
-					 examples: values.examples,
-				}, { 
-					questionid: qid
-				});
-
-				if(processQueue[qid]) {
-					processQueue[qid].abort();
-				}
-				
-				if($rootScope.responseLinks[qid]) {
-					processQueue[qid] = gs.updateRow($rootScope.responseLinks[qid].edit, values, $rootScope.accessToken);
-				}
-				else {
-					processQueue[qid] = gs.insertRow(answerSheet, values, $rootScope.accessToken);
-				}
-
-				processQueue[qid].then(function(row) {
-					$rootScope.responseLinks[qid] = row[':links'];
-
-					var response = {};
-
-					for(var col in row) {
-						// Ignore metadata fields starting with :
-						if(col[0] != ':') {
-							response[col] = row[col];
-						}
+					if(pq[qid]) {
+						_.each(pq[qid], function(q) { q.abort(); });
 					}
 
-					$rootScope.status = {
-						message: "Last saved " + (function(d) { return d.toDateString() + ", " + d.toLocaleTimeString() })(new Date()),
-						clear: 3000
-					};
-				}, function(message) {
-					$rootScope.status = {
-						error: "Failed to save changes for question " + qid
-					};
-				})['finally'](function() {
-					delete processQueue[qid];
+					pq[qid] = [];
+
+					if(section == 'responses') {
+						// Only a single row here
+						values = $.extend({}, {
+							response: values.response, 
+							 justification: values.justification,
+							 confidence: values.confidence,
+							 examples: values.examples,
+						}, { 
+							questionid: qid
+						});
+
+						if(links[qid]) {
+							pq[qid] = [ gs.updateRow(links[qid].edit, values, $rootScope.accessToken) ];
+						}
+						else {
+							pq[qid] = [ gs.insertRow(answerSheet, values, $rootScope.accessToken) ];
+						}
+					}
+					else {
+						_.each(_.filter(values, function(v) { return v.create; }), function(note) {
+							var values = {
+								questionid: note.questionid,
+								date: (function(d) { return d.toDateString() + ", " + d.toLocaleTimeString() })(new Date()),
+								party: $rootScope.participant,
+								field: note.field,
+								note: note.note
+							};
+
+							pq[qid].push(gs.insertRow(noteSheet, values, $rootScope.accessToken).then(function(row) { delete note.create; return row; }));
+						});
+					}
+					
+					_.each(pq[qid], function(ppq) {
+						size++;
+						ppq.then(function(row) {
+							links[qid] = row[':links'];
+
+							size--;
+
+							if(size == 0) {
+								$rootScope.status = {
+									message: "Last saved " + (function(d) { return d.toDateString() + ", " + d.toLocaleTimeString() })(new Date()),
+									success: true,
+									clear: 3000
+								};
+							}
+						}, function(message) {
+							$rootScope.status = {
+								error: "Failed to save changes" 
+							};
+						});
+					});
 				});
+
+				queue[section] = {};
 			});
 
-			queue = {};
+			if(size) {
+				$rootScope.status = {
+					saving: size
+				}
+			}
 		}, 3000);
 
 		var populate = function(sheets) {
@@ -240,14 +274,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 					// Populate answers. This can be done in parralel with control data load
 					// since the data sets are distinct
-					gs.getRows(answerKey, sheets['Answers'], $rootScope.accessToken).then(function(answers) {
+					gs.getRows(answerKey, answerSheet, $rootScope.accessToken).then(function(answers) {
 						angular.forEach(answers, function(answer) {
 							if(!$rootScope.questions[answer.questionid]) {
 								console.log("Answer with qid=" + answer.questionid + " does not correspond to any survey question");
 								return;
 							}
 
-							$rootScope.responseLinks[answer.questionid] = answer[':links'];
+							$rootScope.links.responses[answer.questionid] = answer[':links'];
 
 							var response = $rootScope.responses[answer.questionid]; 
 
@@ -284,7 +318,15 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						_.each(_.keys($rootScope.questions), function(qid) {
 							$rootScope.$watch("responses['" + qid + "']", function(oldValue, newValue) {
 								if(oldValue !== newValue) {
-									queue[qid] = newValue;
+									queue.responses[qid] = newValue;
+								}
+							}, true);
+
+							// Also watch for changes in notes collections
+							$rootScope.$watch("notes['" + qid + "']", function(oldValue, newValue) {
+								if(oldValue !== newValue) {
+									console.log("NOTE!! ", newValue);
+									queue.notes[qid] = newValue;
 								}
 							}, true);
 						});
@@ -292,13 +334,17 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						deferred.resolve();
 					});
 
+					noteSheet = sheets['Notes'];
+
 					// Populate notes for each question
-					gs.getRows(answerKey, sheets['Notes'], $rootScope.accessToken).then(function(rows) {
+					gs.getRows(answerKey, noteSheet, $rootScope.accessToken).then(function(rows) {
 						angular.forEach(rows, function(note) {
 							if(!$rootScope.notes[note.questionid]) {
 								console.log("Note with qid=" + note.questionid + " does not correspond to any survey question");
 								return;
 							}
+
+							$rootScope.links.notes[note.questionid] = note[':links'];
 
 							$rootScope.notes[note.questionid].push(note);	
 						});
@@ -357,6 +403,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					$rootScope.loading = false;
 					$rootScope.status = {
 						message: "Loaded",
+						success: true,
 						clear: 3000,
 					};
 
@@ -461,8 +508,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				$scope.addNote = function() {
 					$rootScope.notes[$scope.question.questionid].push({
 						questionid: $scope.question.questionid,
+						party: $rootScope.participant,
 						field: $scope.field,
-						note: $scope.newNote
+						note: $scope.newNote,
+						create: true
 					});
 
 					$scope.newNote = '';
