@@ -1,10 +1,10 @@
 @font-face {
 	font-family: 'w3fwoff';
-	src:url('fonts/w3fwoff.eot?-49f0l7');
-	src:url('fonts/w3fwoff.eot?#iefix-49f0l7') format('embedded-opentype'),
-		url('fonts/w3fwoff.woff?-49f0l7') format('woff'),
-		url('fonts/w3fwoff.ttf?-49f0l7') format('truetype'),
-		url('fonts/w3fwoff.svg?-49f0l7#w3fwoff') format('svg');
+	src:url('fonts/w3fwoff.eot?p9csnk');
+	src:url('fonts/w3fwoff.eot?#iefixp9csnk') format('embedded-opentype'),
+		url('fonts/w3fwoff.woff?p9csnk') format('woff'),
+		url('fonts/w3fwoff.ttf?p9csnk') format('truetype'),
+		url('fonts/w3fwoff.svg?p9csnk#w3fwoff') format('svg');
 	font-weight: normal;
 	font-style: normal;
 }
@@ -43,4 +43,10 @@
 }
 .icon-bubble:before {
 	content: "\e606";
+}
+.icon-close:before {
+	content: "\e607";
+}
+.icon-plus:before {
+	content: "\e608";
 }

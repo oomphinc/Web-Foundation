@@ -1,5 +1,5 @@
 var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
-var SCOPE = 'https://spreadsheets.google.com/feeds';
+var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/drive';
 
 // Gimme a range op!
 Array.prototype.range = function(n) {
@@ -605,9 +605,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 	} ])
 
 	// Allow for insert/update/delete operations on a list of text inputs
-	.directive('flexibleList', [ function() {
+	.directive('flexibleList', [ '$rootScope', function($rootScope) {
 		return {
-			templateUrl: 'tpl/notes.html',
+			templateUrl: 'tpl/flexible-list.html',
 			restrict: 'E',
 
 			link: function($scope, element, attrs) {
@@ -618,7 +618,63 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 				$scope.list = $scope.$eval(attrs.ngModel);
 
+				$scope.upload = function(upload) {
+					var $scope = $(upload).scope();
+					var $index = $(upload).parents('.flexible-list-item').index();
+
+					var file = upload.files[0];
+
+					if(!file) {
+						console.log("File not found to upload!");
+						return
+					}
+
+					const boundary = '-------314159265358979323846';
+					const delimiter = "\r\n--" + boundary + "\r\n";
+					const close_delim = "\r\n--" + boundary + "--";
+
+					var reader = new FileReader();
+					reader.readAsBinaryString(file);
+					reader.onload = function(e) {
+						var contentType = file.type || 'application/octet-stream';
+						var metadata = {
+							'title': file.name,
+							'mimeType': contentType
+						};
+
+						var base64Data = btoa(reader.result);
+						var multipartRequestBody =
+								delimiter +
+								'Content-Type: application/json\r\n\r\n' +
+								JSON.stringify(metadata) +
+								delimiter +
+								'Content-Type: ' + contentType + '\r\n' +
+								'Content-Transfer-Encoding: base64\r\n' +
+								'\r\n' +
+								base64Data +
+								close_delim;
+
+						var request = gapi.client.request({
+								'path': '/upload/drive/v2/files',
+								'method': 'POST',
+								'params': {'uploadType': 'multipart'},
+								'headers': {
+									'Content-Type': 'multipart/mixed; boundary="' + boundary + '"'
+								},
+								'body': multipartRequestBody
+						});
+
+						$scope.uploadState = "Uploading...";
+
+						request.execute(function(results) {
+							$scope.uploadState = "Uploaded";
+console.log(arguments);
+						});
+					}
+				}
+
 				$scope.$watch('list', function(newValue, oldValue) {
+					$scope[attrs.ngModel] = newValue;
 				});
 			}
 		}
@@ -664,6 +720,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 							$scope.items.push(this.textContent);
 						});
 
+						// Measure the width of the widest item and set the drop-down's
+						// width to that
 						$timeout(function() {
 							var $clone = $('<div class="fancy-select">');
 

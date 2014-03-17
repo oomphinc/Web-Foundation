@@ -1,0 +1,13 @@
+<ul class="flexible-list">
+	<li ng-repeat="item in list track by $index" class="flexible-list-item">
+		<a class="icon-close flexible-list-delete" ng-click="list.splice($index, 1)"></a>
+
+		<input type="text" class="flexible-list-item-text" ng-model="list[$index]" placeholder="Example {{ $index + 1 }}..." />
+		<label class="flexible-list-item-upload"><input type="file" ng-disabled="uploadState" onchange="angular.element(this).scope().upload(this)" /> <span class="button">{{ uploadState || "Upload..." }}</span></label>
+		<p class="description">Note: Any uploaded files will be saved on your Google Drive and will be publicly accessible.</p>
+	</li>
+
+	<li class="flexible-list-item">
+		<a ng-click="list.push('')" class="flexible-list-add"><span class="icon-plus"></span> add</a>
+	</li>
+</ul>

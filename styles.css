@@ -25,6 +25,26 @@ textarea {
 	box-sizing: border-box;
 }
 
+input[type="text"] {
+	border: 1px solid #b8b8b8;
+	width: 100%;
+	padding: .5em;
+	box-sizing: border-box;
+}
+
+.button,
+button {
+	display: inline-block;
+	cursor: pointer;
+	padding: .5em 1em;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+	background-color: #e8e8e8;
+	border: 1px solid #dcdcdc;
+	background-image: -webkit-linear-gradient(top,#f5f5f5,#f1f1f1);
+	color: #444;
+	border-radius: 2px;
+}
+
 .wis-progress {
 	background: #ddd;
 	position: fixed;
@@ -75,7 +95,6 @@ textarea {
 		}
 .section {
 	margin: 1.5em;
-	margin-left: 2.5em;
 	clear: both;
 }
 
@@ -257,16 +276,6 @@ textarea {
 			.notes .close-notes:hover {
 				color: red;
 			}
-		.notes button {
-			cursor: pointer;
-			padding: .5em 1em;
-			box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
-			background-color: #e8e8e8;
-			border: 1px solid #dcdcdc;
-			background-image: -webkit-linear-gradient(top,#f5f5f5,#f1f1f1);
-			color: #444;
-			border-radius: 2px;
-		}
 		.notes .save-note,
 		.notes .add-note {
 			background-color: #4d90fe;
@@ -281,8 +290,7 @@ textarea {
 
 #wrapper {
 	max-width: 1024px;
-	margin: 1em;
-	margin-top: 1.75em;
+	margin: 1.75em 1em;
 }
 
 #status {
@@ -430,3 +438,56 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 				background-color: #eee;
 			}
 
+/**
+ * Flexible List
+ */
+.flexible-list {
+	list-style: none;
+	padding: 0;
+}
+	.flexible-list [class^="icon-"], .flexible-list [class*=" icon-"] {
+		cursor: pointer;
+		padding-right: .5em;
+	}
+	.flexible-list .flexible-list-item input[type="text"],
+	.flexible-list .flexible-list-item .button,
+	.flexible-list .flexible-list-delete {
+		padding: 5px;
+	}
+	.flexible-list .flexible-list-item * {
+		font-size: 1em;
+	}
+	.flexible-list .flexible-list-item {
+		padding-left: 1.5em;
+		padding-right: 8em;
+		min-width: 200px;
+		margin: .5em 0;
+		position: relative;
+	}
+	.flexible-list .flexible-list-delete {
+		display: block;
+		color: #777;
+		position: absolute;
+		left: 0;
+		padding: 6px 0;
+		margin-top: 3px;
+	}
+		.flexible-list .flexible-list-delete:hover {
+			color: #f08888;
+		}
+
+	.flexible-list .flexible-list-add {
+		color: #3079ed;
+		cursor: pointer;
+	}
+		.flexible-list .flexible-list-add:hover {
+			text-decoration: underline;
+		}
+		.flexible-list-item-upload {
+			position: absolute;
+			right: 0;
+			top: 0;
+		}
+		.flexible-list-item-upload input {
+			display: none;
+		}

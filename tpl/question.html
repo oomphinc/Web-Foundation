@@ -5,7 +5,7 @@
 		<fancy-select ng-options="item.weight.toString() as item.content for item in question.option" ng-model="response.response" class="answer-select option-select" id="question-{{ question.questionid }}" with-null="-" />
 	</div>
 
-	<div ng-if="question.type == 'Sum'" class="answer-sum">
+	<div ng-if="question.type == 'Sum'" class="answer-sum" sum-question="question">
 		{{ response.response }}
 	</div>
 
@@ -73,6 +73,7 @@
 			<span>Please cite example URLs</span>
 
 			<flexible-list ng-model="response.example" />
+			<p class="description">Note: Any uploaded files will be saved on your Google Drive and will be publicly accessible.</p>
 		</label>
 	</div>
 	
