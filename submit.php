@@ -31,7 +31,7 @@ if( $method != 'POST' && $method != 'PUT' ) {
 $payload = '<entry xmlns="http://www.w3.org/2005/Atom" xmlns:gsx="http://schemas.google.com/spreadsheets/2006/extended">';
 
 foreach( $_POST as $var => $val ) {
-	$payload .= '<gsx:' . $var . '>' . $val . '</gsx:' . $var . '>';
+	$payload .= '<gsx:' . $var . '>' . htmlspecialchars( $val ) . '</gsx:' . $var . '>';
 }
 
 $payload .= '</entry>';

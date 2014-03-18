@@ -13,12 +13,13 @@
 		<script src="js/angular-sanitize.min.js"></script>
 		<script src="js/w3f-angular-spreadsheets.js"></script>
 		<script src="js/w3f-survey.js"></script>
+		<script src="https://apis.google.com/js/client:plusone.js?onload=gapi_loaded"></script>
 
 		<link rel="stylesheet" href="styles.css" />
 		<link rel="stylesheet" href="icons.css" />
 	</head>
 
-  <body ng-controller="W3FSurveyController">
+  <body>
 		<ul class="wis-progress">
 			<li ng-repeat="section in sectionOrder" ng-style="{ width: (100 / sectionOrder.length) + '%' }" update-on-response>
 				<a ng-click="navigate(section)">
@@ -48,6 +49,5 @@
 			<div id="survey" ng-view></div>
 		</div>
 
-		<script src="https://apis.google.com/js/client:plusone.js?onload=gapi_loaded"></script>
 	</body>
 </html>

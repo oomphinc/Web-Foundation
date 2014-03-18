@@ -1,5 +1,6 @@
+var MASTER_KEY = '0AokPSYs1p9vhdEdjeUluaThWc2RqQnI0c21oN1FaYUE';
 var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
-var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/drive';
+var SCOPE = 'https://spreadsheets.google.com/feeds';
 
 // Gimme a range op!
 Array.prototype.range = function(n) {
@@ -33,7 +34,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 	// Top-level controller
 	.controller('W3FSurveyController', [ 'spreadsheets', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', function(gs, $scope, $rootScope, $q, $cookies, $routeParams, $interval) {
-		var masterKey = '0AokPSYs1p9vhdEdjeUluaThWc2RqQnI0c21oN1FaYUE';
 		var answerKey = $routeParams.answerKey;
 		var answerSheet, noteSheet;
 
@@ -51,7 +51,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		$rootScope.responses = {};
 
 		// We're loading... !
-		$rootScope.loading = true;
+		$rootScope.loading = false;
 
 		// Notes by Question ID
 		$rootScope.notes = {};
@@ -74,185 +74,13 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			window.scrollTo(0,0);
 		}
 
-		//
-		// Manage updating the answer sheet 
 		// 
+		// Load answer sheet once questions have been loaded
+		//
+		$rootScope.$on('questions-loaded', function(ev, deferred) {
+			if(answerKey) {
+				$rootScope.loading = "Loading Answers...";
 
-		// Queue up changes as responses or notes are updated
-		var queue = {
-			responses: {},
-			notes: {}
-		};
-		
-		// Keep timers for processes here, cancelling pending changes to an update process
-		// when newer changes have occured
-		var processQueue = {
-			responses: {},
-			notes: {}
-		};
-
-		// Three-second timer
-		$interval(function() {
-			var size = 0;
-
-			// Process a queue for the two sections
-			_.each([ 'responses', 'notes' ], function(section) {
-				_.each(queue[section], function(response, qid) {
-					var q = queue[section];
-					var pq = processQueue[section];
-
-					var links = $rootScope.links[section];
-					var values = $rootScope[section][qid];
-
-					if(pq[qid]) {
-						_.each(pq[qid], function(q) { q.abort(); });
-					}
-
-					pq[qid] = [];
-
-					if(section == 'responses') {
-						// Only a single row here
-						values = $.extend({}, {
-							response: values.response, 
-							 justification: values.justification,
-							 confidence: values.confidence,
-							 examples: values.examples,
-						}, { 
-							questionid: qid
-						});
-
-						if(links[qid]) {
-							pq[qid] = [ gs.updateRow(links[qid].edit, values, $rootScope.accessToken) ];
-						}
-						else {
-							pq[qid] = [ gs.insertRow(answerSheet, values, $rootScope.accessToken) ];
-						}
-					}
-					else {
-						_.each(_.filter(values, function(v) { return v.create; }), function(note) {
-							var values = {
-								questionid: note.questionid,
-								date: (function(d) { return d.toDateString() + ", " + d.toLocaleTimeString() })(new Date()),
-								party: $rootScope.participant,
-								field: note.field,
-								note: note.note
-							};
-
-							pq[qid].push(gs.insertRow(noteSheet, values, $rootScope.accessToken).then(function(row) { delete note.create; return row; }));
-						});
-					}
-					
-					_.each(pq[qid], function(ppq) {
-						size++;
-						ppq.then(function(row) {
-							links[qid] = row[':links'];
-
-							size--;
-
-							if(size == 0) {
-								$rootScope.status = {
-									message: "Last saved " + (function(d) { return d.toDateString() + ", " + d.toLocaleTimeString() })(new Date()),
-									success: true,
-									clear: 3000
-								};
-							}
-						}, function(message) {
-							$rootScope.status = {
-								error: "Failed to save changes" 
-							};
-						});
-					});
-				});
-
-				queue[section] = {};
-			});
-
-			if(size) {
-				$rootScope.status = {
-					saving: size
-				}
-			}
-		}, 3000);
-
-		var populate = function(sheets) {
-			var deferred = $q.defer();
-
-			// Populate "Sections" from sections sheet
-			var populateSections = function(rows) {
-				angular.forEach(rows, function(section) {
-					$rootScope.sectionOrder.push(section.section);
-
-					// Default to first section
-					if(!$rootScope.activeSection) {
-						$rootScope.activeSection = section.section;
-					}
-
-					$rootScope.sections[section.section] = section;
-					$rootScope.sections[section.section].questions = [];
-				});
-			};
-
-			// Populate "Questions" from questions sheet
-			var populateQuestions = function(rows) {
-				angular.forEach(rows, function(question) {
-					if(!$rootScope.sections[question.section]) {
-						return;
-					}
-
-					// Gather various fields into arrays. Original fields are kept, this is just for ease of templates
-					angular.forEach([ 'option', 'guidance', 'supporting' ], function(field) {
-						question[field] = [];
-
-						for(var i = 0; i <= 10; i++) {
-							var id = field + i;
-
-							if(typeof question[id] == 'string' && question[id] != '' ) {
-								question[field].push({ weight: i, id: id, content: question[id] });
-							}
-						}
-					});
-
-					// Extract valid options from supporting information fields
-					angular.forEach(question.supporting, function(option) {
-						var matches = option.content.match(/^\s*(?:(\d+(?:\s*,\s*\d+)*)\s*;)?\s*(.+)\s*$/i);
-
-						option.values = matches[1] && matches[1].split(/\s*,\s*/);
-						option.content = matches[2];
-					});
-
-					// Put responses here. Initialize with blank response
-					$rootScope.responses[question.questionid] = {
-						questionid: question.questionid,
-						response: '',
-					};
-
-					// Put notes here.
-					$rootScope.notes[question.questionid] = [];
-					
-					// Update progress bar as responses are given
-					$rootScope.$watchCollection('responses["' + question.questionid + '"]', function(newValue) {
-						$rootScope.$broadcast('response-updated', newValue);
-					});
-
-					// Nest subquestions here
-					question.subquestions = [];
-
-					// Save a reference to the question by ID
-					$rootScope.questions[question.questionid] = question;
-
-					// Child questions, assume parent has already been registered.
-					if(question.parentid) {
-						$rootScope.questions[question.parentid].subquestions.push(question);
-					}
-					// Top-level question in this section
-					else {
-						$rootScope.sections[question.section].questions.push(question);
-					}
-				});
-			}
-
-			// Load answer sheet and populate responses model
-			var loadAnswers = function() {
 				// Try to get answer sheet
 				gs.getSheets(answerKey, $rootScope.accessToken).then(function(sheets) {
 					if(!sheets['Control']) {
@@ -300,17 +128,38 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 								}
 							}
 
-							// Collapse multi-part responses into arrays
+							// Parse examples
 							angular.forEach([ 'example' ], function(field) {
-								answer[field] = [];
+								var collection = [];
 
 								for(var i = 0; i <= 10; i++) {
 									var id = field + i;
 
 									if(typeof answer[id] == 'string' && answer[id] != '' ) {
-										answer[field].push(answer[id]);
+										var matches = answer[id].match(/^\[(.+)\]\((.+)\)$/);
+
+										var ex = {
+											title: '',
+											url: '',
+											locked: true,
+										};
+
+										if(matches) {
+											ex.title = matches[1];
+											ex.url = matches[2];
+										}
+										else if(answer[id].match(/^https?:$/)) {
+											ex.url = answer[id];
+										}
+										else {
+											ex.title = answer[id];
+										}
+
+										collection.push(ex);
 									}
 								}
+
+								response[field] = collection;
 							});
 						});
 
@@ -360,77 +209,141 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 							$rootScope.notes[note.questionid].push(note);	
 						});
 					});
-
 				});
 			}
+			else {	
+				deferred.resolve({ 
+					message: "You are taking this survey anonymously and changes will not be saved."
+				});
+			}
+		});
 
-			$rootScope.loading = "Loading Sections...";
-			gs.getRows(masterKey, sheets['Sections'], $rootScope.accessToken).then(function(sections) {
-				populateSections(sections);
+		//
+		// Manage updating the answer sheet 
+		// 
 
-				$rootScope.loading = "Loading Questions...";
-				gs.getRows(masterKey, sheets['Questions'], $rootScope.accessToken).then(function(questions) {
-					populateQuestions(questions);
+		// Queue up changes as responses or notes are updated
+		var queue = {
+			responses: {},
+			notes: {}
+		};
+		
+		// Keep timers for processes here, cancelling pending changes to an update process
+		// when newer changes have occured
+		var processQueue = {
+			responses: {},
+			notes: {}
+		};
 
-					if(answerKey) {
-						$rootScope.loading = "Loading Answers...";
+		// Three-second timer
+		$interval(function() {
+			var size = 0;
 
-						loadAnswers();
+			// Process a queue for the two sections
+			_.each([ 'responses', 'notes' ], function(section) {
+				_.each(queue[section], function(response, qid) {
+					var q = queue[section];
+					var pq = processQueue[section];
+
+					var links = $rootScope.links[section];
+					var values = $rootScope[section][qid];
+
+					if(pq[qid]) {
+						_.each(pq[qid], function(q) { q.abort(); });
 					}
-					else {	
-						deferred.resolve({ 
-							message: "You are taking this survey anonymously and changes will not be saved."
+
+					pq[qid] = [];
+
+					if(section == 'responses') {
+						// Build the record
+						var record = $.extend({}, {
+							response: values.response, 
+							 justification: values.justification,
+							 confidence: values.confidence,
+						}, { 
+							questionid: qid
+						});
+
+						// Copy over any supporting information
+						for(var i = 0; i < 10; i++) {
+							if(values['supporting' + i]) {
+								record['supporting' + i] = values['supporting' + i];
+							}
+						}
+
+						// Munge examples from model structure
+						_.each(values.example, function(example, i) {
+							var ex = _.extend({}, {
+								url: '',
+								text: ''
+							}, example);
+
+							if(ex.url && ex.title) {
+								// Store uploaded links as markdown-style
+								record['example' + i] = '[' + ex.title.replace(']', '\]') + '](' + ex.url + ')';
+							}
+							else if(ex.url) {
+								record['example' + i] = ex.url;
+							}
+							else if(ex.title) {
+								record['example' + i] = ex.title;
+							}
+						});
+
+						if(links[qid]) {
+							pq[qid] = [ gs.updateRow(links[qid].edit, record, $rootScope.accessToken) ];
+						}
+						else {
+							pq[qid] = [ gs.insertRow(answerSheet, record, $rootScope.accessToken) ];
+						}
+					}
+					else {
+						_.each(_.filter(values, function(v) { return v.create; }), function(note) {
+							var values = {
+								questionid: note.questionid,
+								date: (function(d) { return d.toDateString() + ", " + d.toLocaleTimeString() })(new Date()),
+								party: $rootScope.participant,
+								field: note.field,
+								note: note.note
+							};
+
+							pq[qid].push(gs.insertRow(noteSheet, values, $rootScope.accessToken).then(function(row) { delete note.create; return row; }));
 						});
 					}
+					
+					_.each(pq[qid], function(ppq) {
+						size++;
+						ppq.then(function(row) {
+							links[qid] = row[':links'];
+
+							size--;
+
+							if(size == 0) {
+								$rootScope.status = {
+									message: "Last saved " + (function(d) { return d.toDateString() + ", " + d.toLocaleTimeString() })(new Date()),
+									success: true,
+									clear: 3000
+								};
+							}
+						}, function(message) {
+							$rootScope.status = {
+								error: "Failed to save changes" 
+							};
+						});
+					});
 				});
+
+				queue[section] = {};
 			});
 
-			return deferred.promise;
-		};
-
-		window.authenticated = function(authResult) {
-			if(!authResult || authResult.error) {
-				$rootScope.show_signin = true;
-				return;
-			}
-
-			if(!authResult.status.signed_in || $rootScope.accessToken) {
-				return;
-			}
-
-			$rootScope.accessToken = authResult.access_token;
-			$rootScope.show_signin = false;
-
-			$rootScope.loading = "Loading Survey...";
-
-			// Get sheets in master sheet,
-			gs.getSheets(masterKey, $rootScope.accessToken).then(function(sheets) {
-				// Check for required 'Sections' sheet
-				if(!sheets['Sections']) {
-					$rootScope.loading = false;
-					$rootScope.error = "Could't find 'Sections' sheet!";
-					return;
+			if(size) {
+				$rootScope.status = {
+					saving: size
 				}
+			}
+		}, 3000);
 
-				// Load the survey
-				populate(sheets).then(function(status) {
-					$rootScope.status =	status;
-
-					$rootScope.$broadcast('sections-loaded');
-				}, function(error) {
-					$rootScope.error = error
-				})
-				['finally'](function(status) {
-					$rootScope.loading = false;
-				});
-			});
-		};
-
-		$rootScope.status = {
-			message: "Loading..."
-		}
-
-		$rootScope.loading = "Authenticating...";
+		;
 	} ])
 
 	// Create a rail exactly the size of the sections menu
@@ -538,28 +451,19 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 				element.addClass('notable');
 
-				$rootScope.$broadcast('close-notes');
+				$scope.$watch('opened', function(opened) {
+					$(document).trigger('close-notes');
 
-				// Close notes when user clicks outside notes... TODO: Optimize. 
-				// This Takes a long time for all notes boxes to receive this broadcast.
-				$scope.$on('close-notes', function() {
-					if($scope.opened) {
-						$scope.opened = false;
+					if(opened) {
+						function cancel() {
+							$scope.opened = false;
+							$(document).off('close-notes', cancel);
+						}
+						$(document).on('close-notes', cancel);
 					}
 				});
 			}
 		}
-	} ])
-
-	.run([ '$rootScope', function($rootScope) {
-		$(document).on('click', function(ev) {
-			if($(ev.target).closest('.notes, .open-notes').length == 0) {
-				$rootScope.$broadcast('close-notes');
-			}
-			if($(ev.target).closest('.fancy-select').length == 0) {
-				$rootScope.$broadcast('close-popups');
-			}
-		});
 	} ])
 
 	// Drive a "sum" type question, which has for a value the sum of all
@@ -604,22 +508,26 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		}
 	} ])
 
-	// Allow for insert/update/delete operations on a list of text inputs
-	.directive('flexibleList', [ '$rootScope', function($rootScope) {
+	// A field for specifying a URL or a uploaded file
+	.directive('uploadableUrl', [ '$rootScope', function($rootScope) {
 		return {
-			templateUrl: 'tpl/flexible-list.html',
+			templateUrl: 'tpl/uploadable-url.html',
 			restrict: 'E',
+			replace: true,
+			scope: {
+				model: '='
+			},
 
 			link: function($scope, element, attrs) {
-				// Force this model to be an array
-				if(typeof $scope.$eval(attrs.ngModel) == 'undefined') {
-					$scope.$eval(attrs.ngModel + '=[]');
-				}
-
-				$scope.list = $scope.$eval(attrs.ngModel);
+				$scope.placeholder = attrs.placeholder ? $scope.$eval(attrs.placeholder) : '';
 
 				$scope.upload = function(upload) {
 					var $scope = $(upload).scope();
+
+					if($scope.uploading) {
+						return;
+					}
+
 					var $index = $(upload).parents('.flexible-list-item').index();
 
 					var file = upload.files[0];
@@ -665,17 +573,63 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						});
 
 						$scope.uploadState = "Uploading...";
+						$scope.uploading = true;
 
-						request.execute(function(results) {
-							$scope.uploadState = "Uploaded";
-console.log(arguments);
+						request.execute(function(results, status) {
+							status = JSON.parse(status);
+							status = status.gapiRequest.data;
+
+							$scope.uploading = false;
+
+							if(status.status == 200) {
+								$scope.uploadState = "Uploaded";
+								$scope.model.locked = true;
+								$scope.model.url = results.alternateLink;
+								$scope.model.title  = results.title;
+							}
+							else {
+								$scope.uploadState = "Upload Failed! Try again.";
+								$scope.model.locked = false;
+							}
 						});
 					}
 				}
+			}
+		}
+	} ])
 
-				$scope.$watch('list', function(newValue, oldValue) {
-					$scope[attrs.ngModel] = newValue;
+	// Allow for insert/update/delete operations on a list of text inputs
+	.directive('flexibleList', [ '$rootScope', function($rootScope) {
+		return {
+			templateUrl: 'tpl/flexible-list.html',
+			restrict: 'E',
+			scope: {},
+
+			link: function($scope, element, attrs) {
+				$scope.atLeast = parseInt(attrs.atLeast);
+
+				var load = function(newValue) {
+					$scope.list = newValue;
+
+					if(!$scope.list) {
+						$scope.list = [];
+					}
+
+					if($scope.atLeast && $scope.list && $scope.list.length < $scope.atLeast) {
+						for(var i = 0; i < $scope.atLeast; i++) {
+							$scope.list.push({});
+						}
+					}
+				}
+
+				$scope.$parent.$watch(attrs.collection, load, true);
+				$scope.$watch('list', function(newValue) {
+					$scope.$parent.collection = newValue;
 				});
+
+				$scope.add = function() {
+					$scope.list.push({});
+				}
 			}
 		}
 	} ])
@@ -774,23 +728,173 @@ console.log(arguments);
 				}
 			}
 		}
+	} ])
+
+	.run([ '$rootScope', '$q', 'spreadsheets', function($rootScope, $q, gs) {
+		// Broadcast to all scopes when popups or notes should be closed
+		// because we clicked on the document
+		$(document).on('click', function(ev) {
+			if($(ev.target).closest('.notes, .open-notes').length == 0) {
+				$(document).trigger('close-notes');
+			}
+			if($(ev.target).closest('.fancy-select').length == 0) {
+				$rootScope.$broadcast('close-popups');
+			}
+		});
+
+		// Populate the survey
+		function populate(sheets) {
+			var deferred = $q.defer();
+
+			// Populate "Sections" from sections sheet
+			var populateSections = function(rows) {
+				angular.forEach(rows, function(section) {
+					$rootScope.sectionOrder.push(section.section);
+
+					// Default to first section
+					if(!$rootScope.activeSection) {
+						$rootScope.activeSection = section.section;
+					}
+
+					$rootScope.sections[section.section] = section;
+					$rootScope.sections[section.section].questions = [];
+				});
+			};
+
+			// Populate "Questions" from questions sheet
+			var populateQuestions = function(rows) {
+				angular.forEach(rows, function(question) {
+					if(!$rootScope.sections[question.section]) {
+						return;
+					}
+
+					// Gather various fields into arrays. Original fields are kept, this is just for ease of templates
+					angular.forEach([ 'option', 'guidance', 'supporting' ], function(field) {
+						question[field] = [];
+
+						for(var i = 0; i <= 10; i++) {
+							var id = field + i;
+
+							if(typeof question[id] == 'string' && question[id] != '' ) {
+								question[field].push({ weight: i, id: id, content: question[id] });
+							}
+						}
+					});
+
+					// Extract valid options from supporting information fields
+					angular.forEach(question.supporting, function(option) {
+						var matches = option.content.match(/^\s*(?:(\d+(?:\s*,\s*\d+)*)\s*;)?\s*(.+)\s*$/i);
+
+						option.values = matches[1] && matches[1].split(/\s*,\s*/);
+						option.content = matches[2];
+					});
+
+					// Put responses here. Initialize with blank response
+					$rootScope.responses[question.questionid] = {
+						questionid: question.questionid,
+						response: '',
+					};
+
+					// Put notes here.
+					$rootScope.notes[question.questionid] = [];
+					
+					// Update progress bar as responses are given
+					$rootScope.$watchCollection('responses["' + question.questionid + '"]', function(newValue) {
+						$rootScope.$broadcast('response-updated', newValue);
+					});
+
+					// Nest subquestions here
+					question.subquestions = [];
+
+					// Save a reference to the question by ID
+					$rootScope.questions[question.questionid] = question;
+
+					// Child questions, assume parent has already been registered.
+					if(question.parentid) {
+						$rootScope.questions[question.parentid].subquestions.push(question);
+					}
+					// Top-level question in this section
+					else {
+						$rootScope.sections[question.section].questions.push(question);
+					}
+				});
+			}
+
+			// Load answer sheet and populate responses model
+			$rootScope.loading = "Loading Sections...";
+			gs.getRows(MASTER_KEY, sheets['Sections'], $rootScope.accessToken).then(function(sections) {
+				populateSections(sections);
+
+				$rootScope.loading = "Loading Questions...";
+				gs.getRows(MASTER_KEY, sheets['Questions'], $rootScope.accessToken).then(function(questions) {
+					populateQuestions(questions);
+
+					$rootScope.$broadcast('questions-loaded', deferred);
+				});
+			});
+
+			return deferred.promise;
+		}
+
+		function authenticated(authResult) {
+			if(!authResult || authResult.error) {
+				$rootScope.show_signin = true;
+				return;
+			}
+
+			if(!authResult.status.signed_in || $rootScope.accessToken) {
+				$rootScope.loading = "";
+				return;
+			}
+
+			$rootScope.accessToken = authResult.access_token;
+			$rootScope.show_signin = false;
+
+			$rootScope.loading = "Loading Survey...";
+
+			$rootScope.status = {
+				message: "Loading..."
+			};
+
+			// Get sheets in master sheet,
+			gs.getSheets(MASTER_KEY, $rootScope.accessToken).then(function(sheets) {
+				// Check for required 'Sections' sheet
+				if(!sheets['Sections']) {
+					$rootScope.loading = false;
+					$rootScope.error = "Could't find 'Sections' sheet!";
+					return;
+				}
+
+				// Load the survey
+				populate(sheets).then(function(status) {
+					$rootScope.status =	status;
+
+					$rootScope.$broadcast('sections-loaded');
+				}, function(error) {
+					$rootScope.error = error
+				})
+				['finally'](function(status) {
+					$rootScope.loading = false;
+				});
+			});
+		};
+
+		window.gapi_loaded = function() {
+			$rootScope.loading = "Authenticating...";
+
+			gapi.auth.authorize({
+				client_id: CLIENT_ID,
+				scope: SCOPE,
+				immediate: true
+			}, authenticated);
+		}
+		
+		// Render the sign-in button
+		gapi.signin.render(document.getElementById('signin-button'), {
+			clientid: CLIENT_ID,
+			scope: SCOPE,
+			cookiepolicy: 'single_host_origin',
+			callback: authenticated
+		});
+
 	} ]);
-
-window.gapi_loaded = function() {
-	window.GAPI_LOADED = true;
-
-	// Try to authenticate immediately
-	gapi.auth.authorize({
-		client_id: CLIENT_ID,
-		scope: SCOPE,
-		immediate: true
-	}, window.authenticated);
-
-	// Render the sign-in button
-	gapi.signin.render(document.getElementById('signin-button'), {
-		clientid: CLIENT_ID,
-		scope: SCOPE,
-		cookiepolicy: 'single_host_origin',
-		callback: 'authenticated'
-	});
-};

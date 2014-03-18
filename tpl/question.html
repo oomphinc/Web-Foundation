@@ -59,12 +59,7 @@
 	<div ng-if="question.guidance.length" class="guidance-container">
 		<h4>Guidance:</h4>
 
-		<div>
-			<div class="guidance" ng-repeat="guidance in question.guidance" ng-style="{ maxWidth: (100 / question.guidance.length) + '%' }">
-				<p>
-					{{ guidance.weight }} - {{ guidance.content }}
-				</p>
-			</div>
+		<div class="guidance" ng-repeat="guidance in question.guidance" ng-style="{ maxWidth: (100 / question.guidance.length) + '%' }" ng-bind-html="(question.guidance.length > 1 ? guidance.weight + ' - ' : '') + guidance.content | markdown">
 		</div>
 	</div>
 
@@ -72,7 +67,7 @@
 		<label>
 			<span>Please cite example URLs</span>
 
-			<flexible-list ng-model="response.example" />
+			<flexible-list collection="response.example" at-least="1" />
 			<p class="description">Note: Any uploaded files will be saved on your Google Drive and will be publicly accessible.</p>
 		</label>
 	</div>

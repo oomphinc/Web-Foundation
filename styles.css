@@ -37,13 +37,18 @@ button {
 	display: inline-block;
 	cursor: pointer;
 	padding: .5em 1em;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
 	background-color: #e8e8e8;
 	border: 1px solid #dcdcdc;
 	background-image: -webkit-linear-gradient(top,#f5f5f5,#f1f1f1);
 	color: #444;
 	border-radius: 2px;
 }
+button {
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+}
+	.button:hover, button:hover {
+		background-image: -webkit-linear-gradient(top, #f8f8f8, #f6f6f6);
+	}
 
 .wis-progress {
 	background: #ddd;
@@ -94,7 +99,7 @@ button {
 			background-color: #8f8;
 		}
 .section {
-	margin: 1.5em;
+	margin: 1.5em 1.5em 1.5em 2.5em;
 	clear: both;
 }
 
@@ -400,7 +405,8 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 }
 	.fancy-select .fancy-select-selected {
 		display: block;
-		border: 1px solid #f0f0f0;
+		border: 1px solid #dcdcdc;
+		text-align: center;
 		background-image: -webkit-linear-gradient(top,#f5f5f5,#f1f1f1);
 		background: #f8f8f8;
 		cursor: pointer;
@@ -449,8 +455,6 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 		cursor: pointer;
 		padding-right: .5em;
 	}
-	.flexible-list .flexible-list-item input[type="text"],
-	.flexible-list .flexible-list-item .button,
 	.flexible-list .flexible-list-delete {
 		padding: 5px;
 	}
@@ -459,9 +463,8 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 	}
 	.flexible-list .flexible-list-item {
 		padding-left: 1.5em;
-		padding-right: 8em;
 		min-width: 200px;
-		margin: .5em 0;
+		margin: .75em 0 .5em;
 		position: relative;
 	}
 	.flexible-list .flexible-list-delete {
@@ -483,11 +486,39 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 		.flexible-list .flexible-list-add:hover {
 			text-decoration: underline;
 		}
-		.flexible-list-item-upload {
-			position: absolute;
-			right: 0;
-			top: 0;
-		}
-		.flexible-list-item-upload input {
-			display: none;
-		}
+
+/**
+ * Uploadable URL
+ */
+.uploadable-url {
+}
+	.uploadable-url input[type="text"] {
+		width: 100%;
+		margin-bottom: .5em;
+	}
+	.uploadable-url input[type="text"],
+	.uploadable-url .button {
+		box-sizing: border-box;
+		line-height: 1.5em;
+		height: 2em;
+		padding: .25em;
+	}
+	.uploadable-url-preview-url {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.uploadable-url-url {
+		position: relative;
+	}
+	.uploadable-url-upload {
+		position: absolute;
+		top: 0;
+		right: 0;
+	}
+	.uploadable-url-upload input {
+		display: none;
+	}
+	.uploadable-url-upload .button {
+		padding: .25em 1em;
+	}
