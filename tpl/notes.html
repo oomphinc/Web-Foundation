@@ -11,9 +11,9 @@
 
 	<div class="note" ng-repeat="note in notes" ng-if="note.field == field" ng-init="text = note.party + ': ' + note.note">
 		<div class="note-actions">
-			<a class="note-edit" ng-if="note.party == participant"></a>
-			<a class="note-delete" ng-if="note.party == participant"></a>
-			<a class="note-resolve" ng-if="note.party != participant && !note.resolved"></a>
+			<a class="note-edit" title="Edit this note" ng-if="note.party == participant"></a>
+			<a class="note-delete" title="Delete this note" ng-if="note.party == participant"></a>
+			<a class="note-resolve" title="Resolve this note" ng-if="note.party != participant && !note.resolved"></a>
 		</div>
 		<div ng-bind-html="text | markdown"></div>
 	</div>

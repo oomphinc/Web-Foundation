@@ -99,9 +99,14 @@ button {
 			background-color: #8f8;
 		}
 .section {
-	margin: 1.5em 1.5em 1.5em 2.5em;
+	margin: 1.5em 1.5em 5em 2.5em;
 	clear: both;
 }
+	.section:after {
+		content: ' ';
+		display: block;
+		clear: both;
+	}
 
 .question {
 	float: left;
@@ -313,10 +318,16 @@ button {
 
 	z-index: 20;
 }
-#status.status-error {
-	border: 1px solid #f0c0c0;
-	background-color: #f8c0c8;
-}
+	#status .status-error {
+		border: 1px solid #fab3b7;
+		background-color: #fadbdd;
+		position: relative;
+		left: -1px;
+		padding: .3em .5em;
+		margin-left: -.5em;
+		top: -.3em;
+		width: 100%;
+	}
 
 #loading {
 	margin: 1em;
@@ -392,7 +403,33 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 		padding: .5em;
 	}
 
-
+	#user-role-container {
+		box-sizing: border-box;
+		position: fixed; 
+		left: 0;
+		bottom: 0;
+		z-index: 30;
+	}
+	#user-role-container p {
+		margin: 0 0 .5em;
+	}
+		#user-role-container .user-role-popup {
+			white-space: nowrap;
+			padding: .5em;
+			background-color: #f8f8f8;
+			border: 1px solid #d8d8d8;
+		}
+		#user-role-container .survey-info {
+			padding: .5em;
+			position: absolute;
+			background-color: #f8f8f8;
+			bottom: 100%;
+			left: 0;
+			border: 1px solid #d8d8d8;
+			border-bottom: 0;
+			margin-bottom: -1px;
+			
+		}
 /**
  * Angular fancy dropdown
  */

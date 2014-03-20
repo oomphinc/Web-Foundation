@@ -1,6 +1,8 @@
 var MASTER_KEY = '0AokPSYs1p9vhdEdjeUluaThWc2RqQnI0c21oN1FaYUE';
 var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
-var SCOPE = 'https://spreadsheets.google.com/feeds';
+var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/userinfo.email';
+
+
 
 // Gimme a range op!
 Array.prototype.range = function(n) {
@@ -35,10 +37,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 	// Top-level controller
 	.controller('W3FSurveyController', [ 'spreadsheets', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', function(gs, $scope, $rootScope, $q, $cookies, $routeParams, $interval) {
 		var answerKey = $routeParams.answerKey;
-		var answerSheet, noteSheet;
+		var answerSheets = {
+			'Control': null,
+			'Answers': null,
+			'Notes': null
+		};
 
 		// Who's doing the Survey? Determined by answer sheet, defaults to "Anonymous"
-		$rootScope.participant = "Anonymous";
+		$rootScope.participant = 'Anonymous';
 
 		// Section order and descriptors
 		$rootScope.sectionOrder = [];
@@ -59,10 +65,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		// Anonymous until proven otherwise
 		$rootScope.anonymous = true;
 
+		// Control sheet values
+		$rootScope.control = {};
+
 		// Links to answer sheet rows by question id
 		$rootScope.links = {
 			responses: {},
-			notes: {}
+			notes: {},
+			control: {}
 		};
 
 		// Set up an initial page
@@ -74,148 +84,209 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			window.scrollTo(0,0);
 		}
 
-		// 
 		// Load answer sheet once questions have been loaded
-		//
 		$rootScope.$on('questions-loaded', function(ev, deferred) {
-			if(answerKey) {
-				$rootScope.loading = "Loading Answers...";
+			if(!answerKey) {
+				return;
+			}
 
-				// Try to get answer sheet
-				gs.getSheets(answerKey, $rootScope.accessToken).then(function(sheets) {
-					if(!sheets['Control']) {
-						$rootScope.error = "Couldn't find control sheet";
+			var loadControl = function() {
+				$rootScope.loading = "Loading Control...";
+
+				var q = $q.defer();
+
+				gs.getRows(answerKey, answerSheets.Control, $rootScope.accessToken, 'field').then(function(rows) {
+
+					_.each(rows, function(row, key) {
+						$rootScope.control[key] = row.value;
+						$rootScope.links['control'][key] = row.links;
+					});
+
+					// Ensure all required fields are defined:
+					var requiredFields = [ 'Coordinator Email', 'Researcher', 'Status' ]; 
+					var missingFields = _.filter(requiredFields, function(field) {
+						return typeof $rootScope.control[field] == 'undefined';
+					});
+
+					if(missingFields.length) {
+						q.reject("Missing field " + missingFields.join(', '));
 						return;
 					}
-
-					if(!sheets['Answers']) {
-						$rootScope.error = "Couldn't find answers sheet";
-						return;
-					}
-
-					// Get any answer metadata from control sheet
-					gs.getRows(answerKey, sheets['Control'], $rootScope.accessToken).then(function(config) {
-						if(config.length == 0) {
-							$rootScope.error = "Couldn't determine country!";
+					
+					if($rootScope.userEmail) {
+						// Who even are you?
+						if($rootScope.userEmail == $rootScope.control['Coordinator Email']) {
+							$rootScope.participant = 'Coordinator';
+						}
+						else if(hex_md5($rootScope.userEmail) == $rootScope.control['Researcher']) {
+							$rootScope.participant = 'Researcher';
+						}
+						else if(hex_md5($rootScope.userEmail) == $rootScope.control['Reviewer']) {
+							$rootScope.participant = 'Reviewer';
 						}
 
-						// TODO: Verify user's role here based on Control sheet comparison of hashed IDs
-						$rootScope.anonymous = false;
+						$rootScope.anonymous = ($rootScope.participant == 'Anonymous');
+					}
 
-						$rootScope.country = config[0].country;
-					});
+					$rootScope.country = $rootScope.control['Country'];
 
-					answerSheet = sheets['Answers'];
+					q.resolve();
+				}, q.reject);
 
-					// Populate answers. This can be done in parralel with control data load
-					// since the data sets are distinct
-					gs.getRows(answerKey, answerSheet, $rootScope.accessToken).then(function(answers) {
-						angular.forEach(answers, function(answer) {
-							if(!$rootScope.questions[answer.questionid]) {
-								console.log("Answer with qid=" + answer.questionid + " does not correspond to any survey question");
-								return;
+				return q.promise;
+			}
+
+			var loadAnswers = function() {
+				$rootScope.loading = "Loading Answers...";
+
+				var q = $q.defer();
+
+				// Populate answers. This can be done in parralel with control data load
+				// since the data sets are distinct
+				gs.getRows(answerKey, answerSheets.Answers, $rootScope.accessToken).then(function(answers) {
+					angular.forEach(answers, function(answer) {
+						if(!$rootScope.questions[answer.questionid]) {
+							console.log("Answer with qid=" + answer.questionid + " does not correspond to any survey question");
+							return;
+						}
+
+						$rootScope.links.responses[answer.questionid] = answer[':links'];
+
+						var response = $rootScope.responses[answer.questionid]; 
+
+						// Copy all response properties from sheet into row
+						for(var col in answer) {
+							// Ignore metadata fields starting with :
+							if(col[0] != ':') {
+								response[col] = answer[col];
 							}
+						}
 
-							$rootScope.links.responses[answer.questionid] = answer[':links'];
+						// Parse examples
+						angular.forEach([ 'example' ], function(field) {
+							var collection = [];
 
-							var response = $rootScope.responses[answer.questionid]; 
+							for(var i = 0; i <= 10; i++) {
+								var id = field + i;
 
-							// Copy all response properties from sheet into row
-							for(var col in answer) {
-								// Ignore metadata fields starting with :
-								if(col[0] != ':') {
-									response[col] = answer[col];
-								}
-							}
+								if(typeof answer[id] == 'string' && answer[id] != '' ) {
+									var matches = answer[id].match(/^\[(.+)\]\((.+)\)$/);
 
-							// Parse examples
-							angular.forEach([ 'example' ], function(field) {
-								var collection = [];
+									var ex = {
+										title: '',
+										url: '',
+										locked: true,
+									};
 
-								for(var i = 0; i <= 10; i++) {
-									var id = field + i;
-
-									if(typeof answer[id] == 'string' && answer[id] != '' ) {
-										var matches = answer[id].match(/^\[(.+)\]\((.+)\)$/);
-
-										var ex = {
-											title: '',
-											url: '',
-											locked: true,
-										};
-
-										if(matches) {
-											ex.title = matches[1];
-											ex.url = matches[2];
-										}
-										else if(answer[id].match(/^https?:$/)) {
-											ex.url = answer[id];
-										}
-										else {
-											ex.title = answer[id];
-										}
-
-										collection.push(ex);
+									if(matches) {
+										ex.title = matches[1];
+										ex.url = matches[2];
 									}
+									else if(answer[id].match(/^https?:$/)) {
+										ex.url = answer[id];
+									}
+									else {
+										ex.title = answer[id];
+									}
+
+									collection.push(ex);
 								}
-
-								response[field] = collection;
-							});
-						});
-
-						// Only now that the answer sheet has been loaded
-						// do we watch for changes to the responses that might
-						// come from the user.
-						//
-						// Watch responses to add any changes to the save queue
-						//
-						// BUG: oldValue and newValue are the same in this call from $watchCollection -
-						// See: https://github.com/angular/angular.js/issues/2621. 
-						_.each(_.keys($rootScope.questions), function(qid) {
-							$rootScope.$watch("responses['" + qid + "']", function(oldValue, newValue) {
-								if(oldValue !== newValue) {
-									queue.responses[qid] = newValue;
-								}
-							}, true);
-
-							// Also watch for changes in notes collections
-							$rootScope.$watch("notes['" + qid + "']", function(oldValue, newValue) {
-								if(oldValue !== newValue) {
-									console.log("NOTE!! ", newValue);
-									queue.notes[qid] = newValue;
-								}
-							}, true);
-						});
-
-						deferred.resolve({
-							message: "Loaded",
-							success: true,
-							clear: 3000,
-						});
-					});
-
-					noteSheet = sheets['Notes'];
-
-					// Populate notes for each question
-					gs.getRows(answerKey, noteSheet, $rootScope.accessToken).then(function(rows) {
-						angular.forEach(rows, function(note) {
-							if(!$rootScope.notes[note.questionid]) {
-								console.log("Note with qid=" + note.questionid + " does not correspond to any survey question");
-								return;
 							}
 
-							$rootScope.links.notes[note.questionid] = note[':links'];
-
-							$rootScope.notes[note.questionid].push(note);	
+							response[field] = collection;
 						});
 					});
-				});
+
+					// Only now that the answer sheet has been loaded
+					// do we watch for changes to the responses that might
+					// come from the user.
+					//
+					// Watch responses to add any changes to the save queue
+					//
+					// BUG: oldValue and newValue are the same in this call from $watchCollection -
+					// See: https://github.com/angular/angular.js/issues/2621. 
+					_.each(_.keys($rootScope.questions), function(qid) {
+						$rootScope.$watch("responses['" + qid + "']", function(oldValue, newValue) {
+							if(oldValue !== newValue) {
+								queue.responses[qid] = newValue;
+							}
+						}, true);
+
+						// Also watch for changes in notes collections
+						$rootScope.$watch("notes['" + qid + "']", function(oldValue, newValue) {
+							if(oldValue !== newValue) {
+								queue.notes[qid] = newValue;
+							}
+						}, true);
+					});
+
+					q.resolve();
+				}, q.reject);
+
+				return q.promise;
 			}
-			else {	
-				deferred.resolve({ 
-					message: "You are taking this survey anonymously and changes will not be saved."
-				});
+
+			var loadNotes = function() {
+				$rootScope.loading = "Loading Notes...";
+
+				var q = $q.defer();
+
+				// Populate notes for each question
+				return gs.getRows(answerKey, answerSheets.Notes, $rootScope.accessToken).then(function(rows) {
+					_.each(rows, function(note) {
+						if(!$rootScope.notes[note.questionid]) {
+							console.log("Note with qid=" + note.questionid + " does not correspond to any survey question");
+							return;
+						}
+
+						$rootScope.links.notes[note.questionid] = note[':links'];
+
+						$rootScope.notes[note.questionid].push(note);	
+					});
+
+					q.resolve();
+				}, q.reject);
+
+				return q.promise;
 			}
+
+			var loadError = function(message) {
+				$rootScope.error = message;
+
+				return function(more) {
+					deferred.reject({
+						error: message + (more ? ': ' + more : ''),
+						message: "You are taking this survey anonymously and changes will not be saved."
+					});
+				}
+			}
+
+			// Pull sheets from answer sheet and confirm they're all there.
+			gs.getSheets(answerKey, $rootScope.accessToken).then(function(sheets) {
+				for(var sheet in answerSheets) {
+					if(!sheets[sheet]) {
+						loadError("Invalid answer sheet.")();
+						return;
+					}
+					else {
+						answerSheets[sheet] = sheets[sheet];
+					}
+				}
+
+				// We now have confirmed the answer spreadsheet has all of the required sheets,
+				// load each one in sequence
+				loadControl().then(function() {
+					loadAnswers().then(function() {
+						loadNotes().then(function() {
+							deferred.resolve({
+								message: "Loaded",
+								success: true,
+								clear: 3000,
+							});
+						}, loadError("Invalid Notes"));
+					}, loadError("Invalid Answers"));
+				}, loadError("Invalid Control"));
+			}, loadError("Invalid answer key."));
 		});
 
 		//
@@ -294,7 +365,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 							pq[qid] = [ gs.updateRow(links[qid].edit, record, $rootScope.accessToken) ];
 						}
 						else {
-							pq[qid] = [ gs.insertRow(answerSheet, record, $rootScope.accessToken) ];
+							pq[qid] = [ gs.insertRow(answerSheets.Answers, record, $rootScope.accessToken) ];
 						}
 					}
 					else {
@@ -307,7 +378,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 								note: note.note
 							};
 
-							pq[qid].push(gs.insertRow(noteSheet, values, $rootScope.accessToken).then(function(row) { delete note.create; return row; }));
+							var promise = gs.insertRow(answerSheets.Notes, values, $rootScope.accessToken);
+
+							promise.then(function(row) { delete note.create; return row; });
+
+							pq[qid].push(promise);
 						});
 					}
 					
@@ -847,6 +922,12 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				return;
 			}
 
+			gapi.client.load('oauth2', 'v2', function() {
+				gapi.client.oauth2.userinfo.get().execute(function(resp) {
+					$rootScope.userEmail = resp.email;
+				});
+			});
+
 			$rootScope.accessToken = authResult.access_token;
 			$rootScope.show_signin = false;
 
@@ -868,12 +949,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				// Load the survey
 				populate(sheets).then(function(status) {
 					$rootScope.status =	status;
-
-					$rootScope.$broadcast('sections-loaded');
-				}, function(error) {
-					$rootScope.error = error
+				}, function(status) {
+					$rootScope.status = status;
 				})
 				['finally'](function(status) {
+					$rootScope.$broadcast('sections-loaded');
 					$rootScope.loading = false;
 				});
 			});

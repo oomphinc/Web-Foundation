@@ -129,7 +129,7 @@ angular.module('GoogleSpreadsheets', [])
 
 						if(useKey) {
 							if(key) {
-								rows[key] = row;
+								rows[row[useKey]] = row;
 							}
 							else {
 								if(!rows['']) {

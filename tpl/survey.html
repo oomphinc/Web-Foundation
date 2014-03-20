@@ -2,23 +2,34 @@
 	<h3>{{ loading }}</h3>
 </div>
 
-<div id="status" fade-on="status" ng-show="status" ng-class="{ 'status-error': status.error, 'status-saving': status.saving }">
+<div id="status" fade-on="status" ng-show="status">
 	<ng-pluralize count="status.saving" ng-if="status.saving" when="{ 'one': 'Saving...', 'other': 'Saving {} changes...' }"></ng-pluralize>
 
-	<span ng-if="status.error">
+	<div class="status-error" ng-if="status.error">
 		{{ status.error }}
-	</span>
+	</div>
 
-	<span ng-if="status.message">
+	<div ng-if="status.message">
 		<span ng-if="status.success" class="icon-checkmark"></span> {{ status.message }}
-	</span>
+	</div>
+</div>
+
+<div id="user-role-container" ng-if="!anonymous">
+	<div class="user-role-popup" ng-click="popup=!popup">
+		<span class="user-role">{{ participant }}</span>
+		<span class="user-email">{{ userEmail }}</span>
+	</div>
+
+	<div class="survey-info" ng-if="popup && participant != 'Coordinator'">
+		<p>You are completing this survey for <strong>{{ country }}</strong>, and your survey coordinator is <a href="mailto:{{ control['Coordinator Email'] }}">{{ control['Coordinator Name'] }}</a></p>
+	</div>
 </div>
 
 <div class="ng-hide" ng-show="!loading">
 	<nav id="sections">
 		<ul>
 			<li ng-repeat="section in sectionOrder" ng-class="{ active: activeSection == section }">
-			<a ng-click="navigate(section)">{{ section }}</a>
+				<a ng-click="navigate(section)">{{ section }}</a>
 			</li>
 		</ul>
 	</nav>
@@ -33,3 +44,4 @@
 		</div>
 	</section>
 </div>
+
