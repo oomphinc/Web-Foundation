@@ -279,6 +279,11 @@ button {
 		float: left;
 		box-sizing: border-box;
 	}
+	@media (max-width: 900px) {
+		.guidance {
+			min-width: 100%;
+		}
+	}
 	.guidance p {
 		margin: 0 .5em .5em;
 	}
