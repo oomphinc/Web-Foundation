@@ -87,8 +87,8 @@
 
 	<p>Please confirm that you are finished completing this survey and are satisfied with your answers.</p>
 	
-	<p ng-if="count = countNotes('unresolved')">
-		You have {{ count }} unresolved notes. 
+	<p ng-if="count = countNotes()">
+		There are {{ count }} unresolved notes. 
 	</p>
 
 	<button class="cancel-button" ng-click="complete(false)">Not yet, go back</button>

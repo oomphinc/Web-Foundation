@@ -91,7 +91,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			window.scrollTo(0,0);
 		}
 		
-		// Count note in a particular section
+		// Count unresolved notes in a particular section, or if coordinator,
+		// count ALL unresolved notes
 		$rootScope.countNotes = function(sectionid) {
 			var count = 0;
 
@@ -99,7 +100,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			if(!sectionid) {
 				_.each($rootScope.notes, function(notes, questionid) {
 					_.each(notes, function(note) {
-						if(note.party != $rootScope.participant && !note.resolved) {
+						if(!note.resolved && ($rootScope.participant == 'Coordinator' || note.party != $rootScope.participant)) {
 							count++;
 						}
 					});
@@ -110,7 +111,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			else {
 				_.each($rootScope.sections[sectionid].questions, function(question) {
 					_.each($rootScope.notes[question.questionid], function(note) {
-						if(note.party != $rootScope.participant && !note.resolved) {
+						if(!note.resolved && ($rootScope.participant == 'Coordinator' || note.party != $rootScope.participant)) {
 							count++;
 						}
 					});
