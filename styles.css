@@ -55,6 +55,67 @@ button {
 		background-image: -webkit-linear-gradient(top, #f8f8f8, #f6f6f6);
 	}
 
+	.complete-button {
+		background-image: -webkit-linear-gradient(top, #a0f8a0, #9ef69e) !important;
+	}
+		.complete-button:hover {
+			background-image: -webkit-linear-gradient(top, #b0f8b0, #a0f8a0) !important;
+		}
+
+/**
+ * Previous / Next section buttons
+ */
+.paging {
+	overflow: hidden;
+	font-size: 1.5em;
+	padding: .5em;
+	margin-top: 1.5em;
+	float: left;
+	width: 100%;
+}
+.paging button {
+	font-size: inherit;
+	font-weight: bold;
+}
+	.paging .next-button {
+		float: right;
+	}
+	.paging .previous-button  {
+		float: left;
+	}
+	.paging .complete-button  {
+		float: right;
+	}
+
+/**
+ * Modal popups
+ */
+.modal-overlay {
+	position: fixed;
+	z-index: 20;
+	background-color: rgba(0,0,0,.5);
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+}
+	.modal {
+		position: absolute;
+		padding: 1em;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%,-50%);
+		-webkit-transform: translate(-50%,-50%);
+		background: #fff;
+		border: 1px solid #ddd;
+		max-width: 500px;
+		box-shadow: 1px 1px 2px rgba(0,0,0,.2);
+	}
+	.modal h2 {
+		margin-top: 0;
+	}
+
+
 .wis-progress {
 	background: #ddd;
 	position: fixed;
@@ -425,6 +486,12 @@ button {
 
 	background: #e2e2e2; /* Old browsers */
 }
+	#sections li .note-count {
+		float: right;
+	}
+		#sections li .note-count .icon-bubble {
+			color: #66c;
+		}
 	#sections li:hover {
 background: #ffffff; /* Old browsers */
 background: -moz-linear-gradient(top,  #ffffff 0%, #f3f3f3 50%, #ededed 51%, #ffffff 100%); /* FF3.6+ */
@@ -451,21 +518,35 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 		display: block;
 		padding: .5em;
 	}
+	#sections .complete-button {
+		width: 100%;
+		box-sizing: border-box;
+	}
 
 #user-role-container {
 	background: #f8fdf8;
 	padding: .5em;
 	border: 1px solid #d8d8d8;
+	position: absolute;
+	right: 0;
+	box-sizing: border-box;
+	width: 100%;
 }
+	#user-role-container .user-role {
+		display: inline-block;
+		max-width: 100%;
+		white-space: nowrap;
+		overflow: hidden;
+	}
+
 		#user-role-container p {
 			margin: .75em 1em;
 		}
 		#user-role-container .user-role-popup {
 			display: none;
 			left: 100%;
-			margin-left: 10px;
-			top: .25em;
-			max-width: 300px;
+			top: -1px;
+			width: 300px;
 			position: absolute;
 			background-color: #f8f8f8;
 			border: 1px solid #d8d8d8;
@@ -493,6 +574,17 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 			display: block;
 		}
 
+/**
+ * "Complete" modal
+ */
+#complete-popup {
+}
+	#complete-popup .cancel-button {
+		float: left;
+	}
+	#complete-popup .complete-button {
+		float: right;
+	}
 /**
  * Angular fancy dropdown
  */

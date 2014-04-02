@@ -61,9 +61,13 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 		// We're loading... !
 		$rootScope.loading = false;
+		$rootScope.loaded = true;
 
 		// Notes by Question ID
 		$rootScope.notes = {};
+
+		// (Unresolved) note counts by section ID
+		$rootScope.noteCount = {};
 
 		// Anonymous until proven otherwise
 		$rootScope.anonymous = true;
@@ -86,6 +90,139 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			$rootScope.activeSection = $cookies.section = section;
 			window.scrollTo(0,0);
 		}
+		
+		// Count note in a particular section
+		$rootScope.countNotes = function(sectionid) {
+			var count = 0;
+
+			// Falsey parameter, just count all unresolved notes
+			if(!sectionid) {
+				_.each($rootScope.notes, function(notes, questionid) {
+					_.each(notes, function(note) {
+						if(note.party != $rootScope.participant && !note.resolved) {
+							count++;
+						}
+					});
+				});
+			}
+
+			// Truthy parameter is a sectionid, count notes in that sectoin
+			else {
+				_.each($rootScope.sections[sectionid].questions, function(question) {
+					_.each($rootScope.notes[question.questionid], function(note) {
+						if(note.party != $rootScope.participant && !note.resolved) {
+							count++;
+						}
+					});
+				});
+
+				$rootScope.noteCount[sectionid] = count;
+			}
+
+			return count;
+		}
+
+		// Potential status flow
+		$rootScope.statusFlow = {
+			'recruitment': {
+				party: '',
+				nextStates: [ 'assigned' ],
+				label: "Recruitment"
+			},
+			'assigned': {
+				party: 'Researcher',
+				nextStates: [ 'spotcheck' ],
+				label: "Initial Research",
+			},
+			'spotcheck': {
+				party: 'Coordinator',
+				nextStates: [ 'clarification', 'review' ],
+				label: "Initial Spot-Check",
+			},
+			'clarification': {
+				party: 'Researcher',
+				nextStates: [ 'review' ],
+				label: "Clarification"
+			},
+			'review': {
+				party: 'Reviewer',
+				nextStates: [ 'clarification', 'validation' ],
+				label: "Review"
+			},
+			'validation': {
+				party: 'Coordinator',
+				nextStates: [ 'review', 'clarification', 'complete' ],
+				label: "Validation",
+			},
+			'complete': {
+				party: '',
+				nextStates: [],
+				label: "Completion"
+			}
+		};
+
+		/**
+		 * Accept a boolean or a string,
+		 *
+		 * If boolean, toggle "Complete" popup
+		 * If string, complete the survey by moving it to the state specified, and
+		 * make the survey readOnly.
+		 */
+		$rootScope.complete = function(completing) {
+			if(typeof completing == "boolean") {
+				$rootScope.completing = completing;
+			}
+			else if(typeof completing == "string" && $rootScope.completing) {
+				var status = $rootScope.control['Status'];
+
+				if(!$rootScope.statusFlow[status]) {
+					$rootScope.status = {
+						error: "The survey is an invalid state and can not be submitted. Please contact your survey coordinator to remedy this.",
+						clear: 10000
+					};
+
+					$rootScope.completing = false;
+					return;
+				}
+
+				$rootScope.status = {
+					message: "Submitting survey for the next step..."
+				};
+
+				var state = $rootScope.statusFlow[status];
+
+				gs.updateRow($rootScope.links.control['Status'].edit, {
+					field: 'Status',
+					value: completing
+				}, $rootScope.accessToken)
+					.then(function() {
+						$rootScope.status = {
+							message: "Submitted. Please return again!",
+							success: true
+						}
+					});
+
+				$rootScope.readOnly = true;
+				$rootScope.completing = false;
+				$rootScope.surveyStatus = completing;
+			}
+		}
+
+		$rootScope.$watch('surveyStatus', function(status, oldStatus) {
+			if(status === oldStatus) {
+				return;
+			}
+
+			var state = $rootScope.statusFlow[status];
+
+			if(!state) {
+				$rootScope.status = {
+					error: "Invalid status: `" + $rootScope.surveyStatus + "`. Please contact the Survey Coordinator to resolve this issue."
+				}
+
+				return;
+			}
+		});
 
 		// Load answer sheet once questions have been loaded
 		$rootScope.$on('questions-loaded', function(ev, deferred) {
@@ -106,7 +243,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 					_.each(rows, function(row, key) {
 						$rootScope.control[key] = row.value;
-						$rootScope.links['control'][key] = row.links;
+						$rootScope.links['control'][key] = row[':links'];
 					});
 
 					// Ensure all required fields are defined:
@@ -132,8 +269,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 							$rootScope.participant = 'Reviewer';
 						}
 
-						$rootScope.anonymous = ($rootScope.participant == 'Anonymous');
-						$rootScope.commentOnly = $rootScope.participant == 'Coordinator' || $rootScope.participant == 'Reviewer';
+						$rootScope.anonymous = $rootScope.participant == 'Anonymous';
+						$rootScope.surveyStatus = $rootScope.control['Status'];
+
+						var state = $rootScope.statusFlow[$rootScope.surveyStatus];
+
+						if(state && (state.party == $rootScope.participant || $rootScope.participant == 'Coordinator')) {
+							$rootScope.readOnly = false;
+						}
 					}
 
 					$rootScope.country = $rootScope.control['Country'];
@@ -224,6 +367,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						$rootScope.$watch("notes['" + qid + "']", function(oldValue, newValue) {
 							if(oldValue !== newValue) {
 								queue.notes[qid] = newValue;
+								var sectionid = $rootScope.questions[qid].sectionid;
+
+								$rootScope.countNotes(sectionid);
 							}
 						}, true);
 					});
@@ -248,6 +394,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						}
 
 						$rootScope.notes[note.questionid].push(note);	
+					});
+
+					_.each($rootScope.sectionOrder, function(sectionid) {
+						$rootScope.countNotes(sectionid);
 					});
 
 					q.resolve();
@@ -289,6 +439,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 									message: "You are taking this survey anonymously and changes will not be saved.",
 								});
 							}
+							else if($rootScope.status.error) {
+								deferred.resolve($rootScope.status);
+							}
 							else {
 								deferred.resolve({
 									message: "Loaded",
@@ -325,8 +478,12 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 			// Process a queue for the two sections
 			_.each([ 'responses', 'notes' ], function(section) {
+				if($rootScope.readOnly) {
+					return;
+				}
+
 				// Don't save question responses made by non-researchers
-				if(section == 'responses' && $rootScope.participant != 'Researcher') {
+				if(section == 'responses' && $rootScope.participant == 'Reviewer') {
 					return;
 				}
 
@@ -527,7 +684,15 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			link: function($scope, element, attrs) {
 				var timeoutPromise;
 
+				if(!$scope.$eval(attrs.fadeOn)) {
+					element.hide();
+				}
+
 				$scope.$watch(attrs.fadeOn, function(val) {
+					if(val) {
+						element.show();
+					}
+
 					$timeout.cancel(timeoutPromise);
 
 					if(!val) {
@@ -924,7 +1089,32 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		}
 	} ])
 
+	// Modal controlled by a model variable
+	.directive('modal', [ '$rootScope', '$timeout', function($rootScope, $timeout) {
+		return {
+			restrict: 'E',
+			templateUrl: 'tpl/modal.html',
+			transclude: true,
+			replace: true,
+			link: function($scope, element, attrs) {
+				$scope.$watch(attrs.model, function(val) {
+					$scope.showing = val;
+				});
+
+				if(attrs.cancel) {
+					$scope.cancel = function() {
+						$scope.$eval(attrs.cancel);
+					}
+				}
+			}
+		}
+	} ])
+
+	// Initialize this module
 	.run([ '$rootScope', '$q', 'spreadsheets', function($rootScope, $q, gs) {
+		$rootScope.readOnly = true;
+		$rootScope.loading = true;
+
 		// Broadcast to all scopes when popups or notes should be closed
 		// because we clicked on the document
 		$(document).on('click', function(ev) {
@@ -1037,7 +1227,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			}
 
 			if(!authResult.status.signed_in || $rootScope.accessToken) {
-				$rootScope.loading = "";
+				$rootScope.loading = false;
 				return;
 			}
 
@@ -1069,6 +1259,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					['finally'](function(status) {
 						$rootScope.$broadcast('sections-loaded');
 						$rootScope.loading = false;
+						$rootScope.loaded = true;
 					});
 				});
 			}
