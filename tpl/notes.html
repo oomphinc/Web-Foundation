@@ -1,30 +1,40 @@
-<div class="open-notes" title="{{ notes.length }} Comments" ng-class="{ 'with-notes': notes.length > 0 }" ng-click="$rootScope.$broadcast('close-notes'); opened=true;">
-
-				
-	<span class="icon-bubble"></span> <span class="comment-count">{{ notes.length }}</span>
+<div class="open-notes" title="{{ count }} unresolved comments out of {{ notes.length }} comments" ng-class="{ 'with-notes': count > 0 }" ng-click="$rootScope.$broadcast('close-notes'); opened=true;">
+	<span class="icon-bubble"></span> <span class="comment-count">{{ count }}</span>
 </div>
 
 <div class="notes ng-hide" ng-show="opened">
-	<ng-pluralize count="notes.length" when="{ 'one': '1 Note', 'other': '{} Notes' }" class="note-count"></ng-pluralize>
 
-	<div class="close-notes icon-cancel-circle" ng-click="opened=false"></div>
+	<div class="notes-header">
+		<div class="close-notes icon-cancel-circle" ng-click="opened=false"></div>
+		<ng-pluralize count="count" when="{ 'one': '1 Note', 'other': '{} Notes' }" class="note-count"></ng-pluralize>
+	</div>
 
-	<div class="note" ng-repeat="note in notes" ng-if="note.field == field" ng-init="text = note.party + ': ' + note.note">
-		<div class="note-actions">
-			<a class="note-edit" title="Edit this note" ng-if="note.party == participant"></a>
-			<a class="note-delete" title="Delete this note" ng-if="note.party == participant"></a>
-			<a class="note-resolve" title="Resolve this note" ng-if="note.party != participant && !note.resolved"></a>
+	<div class="note-list">
+		<div class="note" ng-repeat="note in notes" ng-class="{ 'note-resolved': note.resolved, 'expanded-note': note.expanded }">
+			<div class="note-actions" ng-if="!note.editing && !note.resolved">
+				<a class="note-edit icon-pencil" title="Edit this note" ng-if="note.party == participant && !note.resolved" ng-click="edit($index)"></a>
+				<a class="note-delete icon-cancel-circle" title="Delete this note" ng-if="note.party == participant" ng-click="delete($index)"></a>
+				<a class="note-resolve icon-checkmark-circle" title="Resolve this note" ng-if="note.party != participant && !note.resolved" ng-click="resolve($index)"></a>
+			</div>
+
+			<a class="resolved-note" ng-if="note.resolved" ng-click="note.expanded=!note.expanded" title="Note has been resolved. Click to expand">Resolved</a>
+			<div ng-bind-html="'**' + note.party + '**: ' + note.note | markdown" ng-if="!note.editing"></div>
+
+			<div class="note-edit-box" ng-if="note.editing">
+				<textarea ng-model="note.editValue"></textarea>
+
+				<button class="save-note" ng-click="note.note=note.editValue; note.editing=false; note.saveEdited=true">Save</button>
+				<button class="cancel-note" ng-click="note.editing=false">Cancel</button>
+			</div>
 		</div>
-		<div ng-bind-html="text | markdown"></div>
+
+		<button class="add-note" ng-click="addingNote=true" ng-show="!addingNote"><span class="icon-pencil"></span> Add Note</button>
+
+		<div class="add-note-form" ng-show="addingNote">
+			<textarea ng-model="newNote"></textarea>
+
+			<button class="save-note" ng-click="addNote();">Save</button>
+			<button class="cancel-note" ng-click="addingNote=false">Cancel</button>
+		</div>
 	</div>
-
-	<button class="add-note" ng-click="addingNote=true" ng-show="!addingNote"><span class="icon-pencil"></span> Add Note</button>
-
-	<div class="add-note-form" ng-show="addingNote">
-		<textarea ng-model="newNote"></textarea>
-
-		<button class="save-note" ng-click="addNote(); addingNote=false;">Save</button>
-		<button class="cancel-note" ng-click="addingNote=false">Cancel</button>
-	</div>
-
 </div>

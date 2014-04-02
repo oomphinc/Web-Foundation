@@ -2,11 +2,14 @@ var MASTER_KEY = '0AokPSYs1p9vhdEdjeUluaThWc2RqQnI0c21oN1FaYUE';
 var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
 var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/userinfo.email';
 
-
-
 // Gimme a range op!
 Array.prototype.range = function(n) {
 	return Array.apply(null, Array(n)).map(function (_, i) {return i;});
+}
+
+// How do we format dates?
+Date.prototype.format = function() {
+	return this.toDateString() + ", " + this.toLocaleTimeString();
 }
 
 angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSanitize' ])
@@ -87,6 +90,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		// Load answer sheet once questions have been loaded
 		$rootScope.$on('questions-loaded', function(ev, deferred) {
 			if(!answerKey) {
+				deferred.resolve({
+					message: "You are taking this survey anonymously and changes will not be saved.",
+				});
+
 				return;
 			}
 
@@ -126,6 +133,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						}
 
 						$rootScope.anonymous = ($rootScope.participant == 'Anonymous');
+						$rootScope.commentOnly = $rootScope.participant == 'Coordinator' || $rootScope.participant == 'Reviewer';
 					}
 
 					$rootScope.country = $rootScope.control['Country'];
@@ -239,8 +247,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 							return;
 						}
 
-						$rootScope.links.notes[note.questionid] = note[':links'];
-
 						$rootScope.notes[note.questionid].push(note);	
 					});
 
@@ -278,15 +284,22 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				loadControl().then(function() {
 					loadAnswers().then(function() {
 						loadNotes().then(function() {
-							deferred.resolve({
-								message: "Loaded",
-								success: true,
-								clear: 3000,
-							});
-						}, loadError("Invalid Notes"));
-					}, loadError("Invalid Answers"));
-				}, loadError("Invalid Control"));
-			}, loadError("Invalid answer key."));
+							if($rootScope.anonymous) {
+								deferred.resolve({
+									message: "You are taking this survey anonymously and changes will not be saved.",
+								});
+							}
+							else {
+								deferred.resolve({
+									message: "Loaded",
+									success: true,
+									clear: 3000,
+								});
+							}
+						}, loadError("Invalid notes"));
+					}, loadError("Invalid answers"));
+				}, loadError("Invalid control"));
+			}, loadError("Invalid answer key"));
 		});
 
 		//
@@ -312,6 +325,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 			// Process a queue for the two sections
 			_.each([ 'responses', 'notes' ], function(section) {
+				// Don't save question responses made by non-researchers
+				if(section == 'responses' && $rootScope.participant != 'Researcher') {
+					return;
+				}
+
 				_.each(queue[section], function(response, qid) {
 					var q = queue[section];
 					var pq = processQueue[section];
@@ -328,10 +346,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					if(section == 'responses') {
 						// Build the record
 						var record = $.extend({}, {
-							response: values.response, 
-							 justification: values.justification,
-							 confidence: values.confidence,
-						}, { 
+							response: values.response,
+							justification: values.justification,
+							confidence: values.confidence,
+							privatenotes: values.privateNotes
+						}, {
 							questionid: qid
 						});
 
@@ -368,24 +387,64 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 							pq[qid] = [ gs.insertRow(answerSheets.Answers, record, $rootScope.accessToken) ];
 						}
 					}
-					else {
+					else if(section == 'notes') {
+						// Add created notes
 						_.each(_.filter(values, function(v) { return v.create; }), function(note) {
-							var values = {
+							var record = {
 								questionid: note.questionid,
-								date: (function(d) { return d.toDateString() + ", " + d.toLocaleTimeString() })(new Date()),
+								date: new Date().format(),
 								party: $rootScope.participant,
 								field: note.field,
 								note: note.note
 							};
 
-							var promise = gs.insertRow(answerSheets.Notes, values, $rootScope.accessToken);
+							var promise = gs.insertRow(answerSheets.Notes, record, $rootScope.accessToken);
 
 							promise.then(function(row) { delete note.create; return row; });
 
 							pq[qid].push(promise);
 						});
+
+						// Update edited notes
+						_.each(_.filter(values, function(v) { return v.saveEdited || v.saveResolved; }), function(note) {
+							var record = {
+								questionid: note.questionid,
+								date: note.date,
+								party: $rootScope.participant,
+								field: note.field,
+								note: note.note,
+								edited: note.edited,
+								resolved: note.resolved
+							};
+
+							if(note.saveEdited) {
+								record.edited = new Date().format();
+							}
+							else if(note.saveResolved) {
+								record.resolved = new Date().format();
+							}
+
+							var promise = gs.updateRow(note[':links'].edit, record, $rootScope.accessToken);
+
+							promise.then(function(row) {
+								delete note.saveEdited; 
+								delete note.saveResolved; 
+								return row; 
+							});
+
+							pq[qid].push(promise);
+						});
 					}
 					
+					// TODO: Test Delete notes
+					_.each(_.filter(values, function(v) { return v.deleted; }), function(note) {
+						gs.deleteRow(note[':links'].edit, $rootScope.accessToken).then(function() {
+							$rootScope.notes[qid] = _.filter($rootScope.notes[qid], function(v) {
+								return !v.deleted;
+							});
+						});
+					});
+
 					_.each(pq[qid], function(ppq) {
 						size++;
 						ppq.then(function(row) {
@@ -395,7 +454,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 							if(size == 0) {
 								$rootScope.status = {
-									message: "Last saved " + (function(d) { return d.toDateString() + ", " + d.toLocaleTimeString() })(new Date()),
+									message: "Last saved " + new Date().format(),
 									success: true,
 									clear: 3000
 								};
@@ -431,7 +490,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						var $ul = $sections.find('ul');
 
 						$sections.width($ul.width());
-						$sections.height($ul.height());
 
 						$(element).css('padding-left', $ul.width());
 					}, 0, false);
@@ -448,7 +506,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				$scope.$on('response-updated', function() {
 					$scope.sectionAnswers = [];
 					$scope.sectionQuestions = _.filter($scope.questions, function(q) { 
-						if(q.section == $scope.section) {
+						if(q.sectionid == $scope.sectionid) {
 							if($scope.responses[q.questionid].response != undefined && $scope.responses[q.questionid].response != '') {
 								$scope.sectionAnswers.push($scope.responses[q.questionid]);
 							}
@@ -499,13 +557,19 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			link: function($scope, element, attrs) {
 				// Determine the expression within 'response' that refers to the field being noted
 				$scope.field = $scope.$eval(attrs.field);
-				$scope.particpant = $rootScope.participant;
+
+				$rootScope.$watch('participant', function(value) {
+					$scope.participant = value;
+				});
 
 				// Import scope variables
 				$scope.question = $scope.$parent.question;
 
 				var refreshNotes = function() {
 					$scope.notes = _.filter( $rootScope.notes[$scope.question.questionid], function(note) { return note.field == $scope.field; });
+					$scope.count = _.reduce($scope.notes, function(memo, note) {
+						return memo + (!note.resolved ? 1 : 0);
+					}, 0);
 				}
 
 				refreshNotes();
@@ -513,6 +577,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				$rootScope.$watch('notes["' + $scope.question.questionid + '"]', refreshNotes, true);
 				
 				$scope.addNote = function() {
+					if(!$scope.newNote || $scope.newNote.match(/^\s*$/)) {
+						return;
+					}
+
 					$rootScope.notes[$scope.question.questionid].push({
 						questionid: $scope.question.questionid,
 						party: $rootScope.participant,
@@ -521,7 +589,44 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						create: true
 					});
 
+					$scope.addingNote = false;
 					$scope.newNote = '';
+				}
+
+				$scope.$watch('addingNote', function(addingNote) {
+					if($scope.editing) {
+						$scope.editing.editing = false;
+						$scope.editing = false;
+					}
+
+					if(addingNote) {
+						element.find('textarea').focus();
+					}
+				});
+
+				$scope.edit = function(index) {
+					if($scope.editing) {
+						$scope.editing.editing = false;
+					}
+
+					$scope.editing = $scope.notes[index];
+
+					$scope.notes[index].editValue = $scope.notes[index].note;
+					$scope.notes[index].editing = true;
+				}
+
+				$scope.$watch('editing', function(editing) {
+					if(editing) {
+						$scope.addingNote = false;
+					}
+				});
+
+				$scope.resolve = function(index) {
+					$scope.notes[index].saveResolved = true;
+				}
+
+				$scope.delete = function(index) {
+					$scope.notes.splice(index,1)[0].deleted = true;
 				}
 
 				element.addClass('notable');
@@ -595,6 +700,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 			link: function($scope, element, attrs) {
 				$scope.placeholder = attrs.placeholder ? $scope.$eval(attrs.placeholder) : '';
+
+				$scope.$parent.$watch(attrs.ngDisabled, function(val) {
+					$scope.disabled = val;
+				});
 
 				$scope.upload = function(upload) {
 					var $scope = $(upload).scope();
@@ -698,8 +807,13 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				}
 
 				$scope.$parent.$watch(attrs.collection, load, true);
+
 				$scope.$watch('list', function(newValue) {
 					$scope.$parent.collection = newValue;
+				});
+
+				$scope.$parent.$watch(attrs.ngDisabled, function(disabled) {
+					$scope.disabled = disabled;
 				});
 
 				$scope.add = function() {
@@ -731,10 +845,15 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					selectedIndex = 0;
 				}
 
+				var disabled = attrs.ngDisabled;
+					
 				return function($scope, element, attrs, transclude) {
 					var $select = element.find('select');
 					var $options = element.find('.fancy-select-options');
 
+					$rootScope.$watch(disabled, function(val) {
+						$scope.disabled = val;
+					});
 					$scope.selectedIndex = selectedIndex;
 
 					// Keep a local model containing the select's <option>s
@@ -809,7 +928,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		// Broadcast to all scopes when popups or notes should be closed
 		// because we clicked on the document
 		$(document).on('click', function(ev) {
-			if($(ev.target).closest('.notes, .open-notes').length == 0) {
+			if($(ev.target).closest('.notes, .open-notes, .cancel-note, .save-note, .note-edit, .note-resolve').length == 0) {
 				$(document).trigger('close-notes');
 			}
 			if($(ev.target).closest('.fancy-select').length == 0) {
@@ -824,22 +943,22 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			// Populate "Sections" from sections sheet
 			var populateSections = function(rows) {
 				angular.forEach(rows, function(section) {
-					$rootScope.sectionOrder.push(section.section);
+					$rootScope.sectionOrder.push(section.sectionid);
 
 					// Default to first section
 					if(!$rootScope.activeSection) {
-						$rootScope.activeSection = section.section;
+						$rootScope.activeSection = section.sectionid;
 					}
 
-					$rootScope.sections[section.section] = section;
-					$rootScope.sections[section.section].questions = [];
+					$rootScope.sections[section.sectionid] = section;
+					$rootScope.sections[section.sectionid].questions = [];
 				});
 			};
 
 			// Populate "Questions" from questions sheet
 			var populateQuestions = function(rows) {
 				angular.forEach(rows, function(question) {
-					if(!$rootScope.sections[question.section]) {
+					if(!$rootScope.sections[question.sectionid]) {
 						return;
 					}
 
@@ -890,7 +1009,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					}
 					// Top-level question in this section
 					else {
-						$rootScope.sections[question.section].questions.push(question);
+						$rootScope.sections[question.sectionid].questions.push(question);
 					}
 				});
 			}
@@ -913,7 +1032,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 		function authenticated(authResult) {
 			if(!authResult || authResult.error) {
-				$rootScope.show_signin = true;
+				$rootScope.showSignin = true;
 				return;
 			}
 
@@ -922,39 +1041,44 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				return;
 			}
 
+			var loadSurvey = function() {
+				$rootScope.accessToken = authResult.access_token;
+				$rootScope.showSignin = false;
+
+				$rootScope.loading = "Loading Survey...";
+
+				$rootScope.status = {
+					message: "Loading..."
+				};
+
+				// Get sheets in master sheet,
+				gs.getSheets(MASTER_KEY, $rootScope.accessToken).then(function(sheets) {
+					// Check for required 'Sections' sheet
+					if(!sheets['Sections']) {
+						$rootScope.loading = false;
+						$rootScope.error = "Could't find 'Sections' sheet!";
+						return;
+					}
+
+					// Load the survey
+					populate(sheets).then(function(status) {
+						$rootScope.status =	status;
+					}, function(status) {
+						$rootScope.status = status;
+					})
+					['finally'](function(status) {
+						$rootScope.$broadcast('sections-loaded');
+						$rootScope.loading = false;
+					});
+				});
+			}
+
+			// Get the user's email address, then continue loading
 			gapi.client.load('oauth2', 'v2', function() {
 				gapi.client.oauth2.userinfo.get().execute(function(resp) {
 					$rootScope.userEmail = resp.email;
-				});
-			});
 
-			$rootScope.accessToken = authResult.access_token;
-			$rootScope.show_signin = false;
-
-			$rootScope.loading = "Loading Survey...";
-
-			$rootScope.status = {
-				message: "Loading..."
-			};
-
-			// Get sheets in master sheet,
-			gs.getSheets(MASTER_KEY, $rootScope.accessToken).then(function(sheets) {
-				// Check for required 'Sections' sheet
-				if(!sheets['Sections']) {
-					$rootScope.loading = false;
-					$rootScope.error = "Could't find 'Sections' sheet!";
-					return;
-				}
-
-				// Load the survey
-				populate(sheets).then(function(status) {
-					$rootScope.status =	status;
-				}, function(status) {
-					$rootScope.status = status;
-				})
-				['finally'](function(status) {
-					$rootScope.$broadcast('sections-loaded');
-					$rootScope.loading = false;
+					loadSurvey();
 				});
 			});
 		};

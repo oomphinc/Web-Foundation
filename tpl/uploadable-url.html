@@ -1,14 +1,14 @@
 <div class="uploadable-url">
-	<input type="text" ng-model="model.title" placeholder="{{ placeholder }}" />
+	<input type="text" ng-model="model.title" ng-disabled="disabled" placeholder="{{ placeholder }}" />
 
 	<div class="uploadable-url-url">
-		<input type="text" ng-model="model.url" ng-disabled="model.locked" placeholder="Enter URL..." ng-hide="model.locked" />
+		<input type="text" ng-model="model.url" ng-disabled="disabled || model.locked" placeholder="Enter URL..." ng-hide="model.locked" />
 
-		<div class="uploadable-url-preview-url" ng-if="model.locked"> 
+		<div class="uploadable-url-preview-url" ng-if="model.locked">
 			<a class="uploadable-url-preview-url" href="{{ model.url }}" target="uploadedPreview">{{ model.url }}</a>
 		</div>
 
-		<div class="uploadable-url-upload" ng-if="!model.locked">
+		<div class="uploadable-url-upload" ng-if="!model.locked && !disabled">
 			<label class="button">
 				{{ uploadState || "Upload..." }} 
 				<input type="file" onchange="angular.element(this).scope().upload(this)" ng-disabled="model.uploading" />

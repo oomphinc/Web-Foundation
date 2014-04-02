@@ -1,10 +1,10 @@
 @font-face {
 	font-family: 'w3fwoff';
-	src:url('fonts/w3fwoff.eot?p9csnk');
-	src:url('fonts/w3fwoff.eot?#iefixp9csnk') format('embedded-opentype'),
-		url('fonts/w3fwoff.woff?p9csnk') format('woff'),
-		url('fonts/w3fwoff.ttf?p9csnk') format('truetype'),
-		url('fonts/w3fwoff.svg?p9csnk#w3fwoff') format('svg');
+	src:url('fonts/w3fwoff.eot?-o019lg');
+	src:url('fonts/w3fwoff.eot?#iefix-o019lg') format('embedded-opentype'),
+		url('fonts/w3fwoff.woff?-o019lg') format('woff'),
+		url('fonts/w3fwoff.ttf?-o019lg') format('truetype'),
+		url('fonts/w3fwoff.svg?-o019lg#w3fwoff') format('svg');
 	font-weight: normal;
 	font-style: normal;
 }
@@ -23,30 +23,39 @@
 	-moz-osx-font-smoothing: grayscale;
 }
 
+.icon-pencil:before {
+	content: "\e604";
+}
+.icon-bubble:before {
+	content: "\e606";
+}
+.icon-user:before {
+	content: "\e60b";
+}
+.icon-cogs:before {
+	content: "\e605";
+}
 .icon-cancel-circle:before {
 	content: "\e600";
 }
 .icon-checkmark-circle:before {
 	content: "\e601";
 }
-.icon-checkmark:before {
-	content: "\e602";
-}
 .icon-spam:before {
 	content: "\e603";
-}
-.icon-pencil:before {
-	content: "\e604";
-}
-.icon-cogs:before {
-	content: "\e605";
-}
-.icon-bubble:before {
-	content: "\e606";
 }
 .icon-close:before {
 	content: "\e607";
 }
+.icon-checkmark:before {
+	content: "\e602";
+}
 .icon-plus:before {
 	content: "\e608";
+}
+.icon-arrow-up:before {
+	content: "\e609";
+}
+.icon-arrow-down:before {
+	content: "\e60a";
 }

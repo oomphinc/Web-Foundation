@@ -22,10 +22,10 @@
 
   <body ng-click="popup=false">
 		<ul class="wis-progress">
-			<li ng-repeat="section in sectionOrder" ng-style="{ width: (100 / sectionOrder.length) + '%' }" update-on-response>
-				<a ng-click="navigate(section)">
-					{{ section }}
-					<span class="progress" ng-if="sectionQuestions.length > 0">{{ sectionAnswers.length }} / {{ sectionQuestions.length }}</span>
+			<li ng-repeat="sectionid in sectionOrder" ng-style="{ width: (100 / sectionOrder.length) + '%' }" update-on-response>
+				<a ng-click="navigate(sectionid)">
+					<strong>{{ sectionid }}</strong>
+					<span class="progress" ng-if="sectionQuestions.length > 0">{{ sectionAnswers.length }}/{{ sectionQuestions.length }}</span>
 					<span class="progress-bar-container">
 						<span class="progress-bar" ng-style="{ width: sectionQuestions.length ? sectionAnswers.length / sectionQuestions.length * 100 + '%' : '100%', backgroundColor: (sectionQuestions.length > 0 ? (sectionQuestions.length == sectionAnswers.length ? '#8f8' : '#ff8') : '#eef') }"></span>
 					</span>
@@ -39,7 +39,7 @@
 				<h2>Web Index Survey - 2014</h2>
 			</header>
 
-			<div id="sign-in" ng-show="show_signin" ng-class="ng-hide">
+			<div id="sign-in" ng-show="showSignin" ng-class="ng-hide">
 				<p>Sign in with your Google account to participate.</p>
 
 				<div class="ng-hide" ng-show="error">{{ error }}</div>

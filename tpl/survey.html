@@ -14,22 +14,24 @@
 	</div>
 </div>
 
-<div id="user-role-container" ng-if="!anonymous">
-	<div class="user-role-popup" ng-click="popup=!popup">
-		<span class="user-role">{{ participant }}</span>
-		<span class="user-email">{{ userEmail }}</span>
-	</div>
-
-	<div class="survey-info" ng-if="popup && participant != 'Coordinator'">
-		<p>You are completing this survey for <strong>{{ country }}</strong>, and your survey coordinator is <a href="mailto:{{ control['Coordinator Email'] }}">{{ control['Coordinator Name'] }}</a></p>
-	</div>
-</div>
-
 <div class="ng-hide" ng-show="!loading">
 	<nav id="sections">
+		<div id="user-role-container" ng-if="!anonymous">
+			<span class="icon-user"></span>
+			<span class="user-role">{{ participant }}</span>
+
+			<div class="user-role-popup" ng-if="participant != 'Coordinator'">
+				<div class="user-role-popup-content">
+					<p>Welcome, <span class="user-email">{{ userEmail }}</span>.</p>
+
+					<p>You are completing this survey for <strong>{{ country }}</strong>, and your survey coordinator is <a href="mailto:{{ control['Coordinator Email'] }}">{{ control['Coordinator Name'] }}</a></p>
+				</div>
+			</div>
+		</div>
+
 		<ul>
-			<li ng-repeat="section in sectionOrder" ng-class="{ active: activeSection == section }">
-				<a ng-click="navigate(section)">{{ section }}</a>
+			<li ng-repeat="sectionid in sectionOrder" ng-class="{ active: activeSection == sectionid }">
+				<a ng-click="navigate(sectionid)">{{ sections[sectionid].section }}</a>
 			</li>
 		</ul>
 	</nav>

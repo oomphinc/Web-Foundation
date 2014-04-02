@@ -24,6 +24,11 @@ textarea {
 	margin: .5em 0;
 	box-sizing: border-box;
 }
+	input[disabled],
+	textarea[disabled] {
+		cursor: not-allowed;
+	}
+
 
 input[type="text"] {
 	border: 1px solid #b8b8b8;
@@ -217,6 +222,9 @@ button {
 		margin: 0 .5em .5em;
 	}
 
+/**
+ * Notes
+ */
 .open-notes {
 	position: absolute;
 	left: -3.25em;
@@ -257,34 +265,70 @@ button {
 		margin-left: .5em;
 		margin-top: .75em;
 		width: 250px;
-		padding: 2px;
-		z-index: 15;
+		z-index: 25;
 		text-indent: 0;
-		padding-top: 1.75em;
 		background-color: #fcfac6;
 		border: 1px solid #feef9c;
 		box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 		font-size: 12px;
 		text-align: left;
 	}
-		.notes .note-count {
-			top: 0;
-			left: .25em;
-			position: absolute;
-			display: block;
+		.notes .notes-header {
+			background-color: #f8f8a8;
+			padding: 2px;
+			position: relative;
 		}
-		.notes .close-notes {
-			position: absolute;
-			top: .25em;
-			right: .25em;
-			cursor: pointer;
-			color: #666;
-			height: 1em;
-			width: 1em;
-			border-radius: .5em;
-		}
+			.notes .note-count {
+			}
+			.notes .close-notes {
+				float: right;
+				cursor: pointer;
+				padding-top: 2px;
+				color: #666;
+			}
 			.notes .close-notes:hover {
 				color: red;
+			}
+		.notes .note {
+			border-bottom: 1px solid #feef9c;
+			margin: .25em 0;
+			padding: .25em;
+			box-sizing: border-box;
+			overflow: hidden;
+		}
+			.notes .note p {
+				margin: 0 0 .25em;
+			}
+			.notes .note-resolved {
+				background-color: #f8f8f8;
+				height: 1.9em;
+				color: #888;
+			}
+			.notes .resolved-note {
+				border: 1px solid rgba(0,0,0,0.1);
+				height: 17px;
+				line-height: 17px;
+				background-color: #f5f5f5;
+				padding: 0 .25em;
+				margin-top: -2px;
+				font-size: .9em;
+				font-weight: bold;
+				background-image: -webkit-linear-gradient(top,#f5f5f5,#f1f1f1);
+				float: right;
+				margin-left: 1em;
+			}
+			.notes .expanded-note {
+				height: auto;
+			}
+		.notes .note .note-actions {
+			float: right;
+			color: #666;
+			margin-right: .25em;
+			padding-left: 1em;
+		}
+			.notes .note .note-actions a:hover {
+				color: #4c4;
+				cursor: pointer;
 			}
 		.notes .save-note,
 		.notes .add-note {
@@ -354,16 +398,21 @@ button {
 #sections {
 	position: fixed;
 	left: 0;
-	top: 2em;
+	bottom: 0;
+	top: 1.2em;
+	border-top: 2px solid transparent;
 	padding: 0;
-	overflow: hidden;
 	transition: width 0.4s;
 	width: 0;
+	z-index: 20;
 }
 #sections ul {
 	margin: 0;
 	padding: 0;
 	position: absolute;
+	top: 2.5em;
+	bottom: 0;
+	overflow: auto;
 	right: 0;
 }
 #sections li {
@@ -403,33 +452,47 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 		padding: .5em;
 	}
 
-	#user-role-container {
-		box-sizing: border-box;
-		position: fixed; 
-		left: 0;
-		bottom: 0;
-		z-index: 30;
-	}
-	#user-role-container p {
-		margin: 0 0 .5em;
-	}
-		#user-role-container .user-role-popup {
-			white-space: nowrap;
-			padding: .5em;
-			background-color: #f8f8f8;
-			border: 1px solid #d8d8d8;
+#user-role-container {
+	background: #f8fdf8;
+	padding: .5em;
+	border: 1px solid #d8d8d8;
+}
+		#user-role-container p {
+			margin: .75em 1em;
 		}
-		#user-role-container .survey-info {
-			padding: .5em;
+		#user-role-container .user-role-popup {
+			display: none;
+			left: 100%;
+			margin-left: 10px;
+			top: .25em;
+			max-width: 300px;
 			position: absolute;
 			background-color: #f8f8f8;
-			bottom: 100%;
-			left: 0;
 			border: 1px solid #d8d8d8;
-			border-bottom: 0;
-			margin-bottom: -1px;
-			
+			z-index: 0;
+			box-shadow: 1px 1px 2px rgba(0,0,0,.1);
 		}
+			#user-role-container .user-role-popup:before {
+				content: " ";
+				display: block;
+				position: absolute;
+				left: -7px;
+				background-color: #f8f8f8;
+				width: 12px;
+				height: 12px;
+				top: .5em;
+				border-left: 1px solid #d8d8d8;
+				border-bottom: 1px solid #d8d8d8;
+				 -webkit-transform: rotate(45deg);  /* Saf3.1+ */     
+				-moz-transform: rotate(45deg);  /* FF3.5/3.6 */
+				-ms-transform: rotate(45deg);  /* IE 9+ */
+				-o-transform: rotate(45deg);  /* Opera 10.5 */
+				transform: rotate(45deg);  /* Newer browsers (incl IE9) */
+			}
+		#user-role-container:hover .user-role-popup {
+			display: block;
+		}
+
 /**
  * Angular fancy dropdown
  */
@@ -450,6 +513,9 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 		width: 100%;
 		box-sizing: border-box;
 	}
+		.fancy-select .fancy-select-disabled {
+			cursor: not-allowed;
+		}
 	.fancy-select .fancy-select-selected,
 	.fancy-select .fancy-select-option {
 		padding: .25em .5em;

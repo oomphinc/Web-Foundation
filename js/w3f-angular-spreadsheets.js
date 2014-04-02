@@ -99,7 +99,7 @@ angular.module('GoogleSpreadsheets', [])
 					deferred.resolve(sheets);
 				})
 				.error(function(data, status, headers, config) {
-					deferred.reject(data);
+					deferred.reject("Unable to access answer data.");
 				});
 
 			return deferred.promise;
@@ -204,11 +204,36 @@ angular.module('GoogleSpreadsheets', [])
 			return deferred.promise;
 		};
 
+		function deleteRow(url, accessToken) {
+			var deferred = defer();
+
+			$http({
+				method: 'GET',
+				url: '/submit.php?accessToken=' + accessToken + '&url=' + url + '&method=DELETE',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded'
+				},
+				timeout: deferred,
+			})
+				.success(function(data, status, headers, config) {
+					var xml = new DOMParser().parseFromString(data, "text/xml")
+					var entries = xml.getElementsByTagName('entry');
+
+					deferred.resolve();
+				})
+				.error(function(data, status, headers, config) {
+					deferred.reject(data);
+				});
+			
+			return deferred.promise;
+		};
+
 		return {
 			getSheets: getSheets,
 			getRows: getRows,
 			updateRow: updateRow,
-			insertRow: insertRow
+			insertRow: insertRow,
+			deleteRow: deleteRow
 		};
 	} ]);
 

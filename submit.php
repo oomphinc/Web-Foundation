@@ -24,22 +24,26 @@ if( strpos( $url, 'https://spreadsheets.google.com/feeds/') !== 0 ) {
 	fail( "Invalid URL" );
 }
 
-if( $method != 'POST' && $method != 'PUT' ) {
+if( $method != 'POST' && $method != 'PUT' && $method != 'DELETE' ) {
 	fail( "Invalid method" );
 }
 
-$payload = '<entry xmlns="http://www.w3.org/2005/Atom" xmlns:gsx="http://schemas.google.com/spreadsheets/2006/extended">';
-
-foreach( $_POST as $var => $val ) {
-	$payload .= '<gsx:' . $var . '>' . htmlspecialchars( $val ) . '</gsx:' . $var . '>';
-}
-
-$payload .= '</entry>';
-
 $ch = curl_init( $url );
 
+if( $method != 'DELETE' && count( $_POST ) > 0 ) {
+	$payload = '<entry xmlns="http://www.w3.org/2005/Atom" xmlns:gsx="http://schemas.google.com/spreadsheets/2006/extended">';
+
+	foreach( $_POST as $var => $val ) {
+		$payload .= '<gsx:' . $var . '>' . htmlspecialchars( $val ) . '</gsx:' . $var . '>';
+	}
+
+	$payload .= '</entry>';
+
+	curl_setopt( $ch, CURLOPT_POSTFIELDS, $payload );
+}
+
+
 curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, $method );
-curl_setopt( $ch, CURLOPT_POSTFIELDS, $payload );
 curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
 curl_setopt( $ch, CURLOPT_HEADER, true );
 curl_setopt( $ch, CURLOPT_HTTPHEADER, array(
