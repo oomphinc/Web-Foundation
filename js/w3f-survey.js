@@ -199,6 +199,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					.then(function() {
 						$rootScope.status = {
 							message: "Submitted. Please return again!",
+							readOnly: "This survey is now read-only. Please return again.", 
 							success: true
 						}
 					});
@@ -229,9 +230,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 		$rootScope.$on('questions-loaded', function(ev, deferred) {
 			if(!answerKey) {
 				deferred.resolve({
-					message: "You are taking this survey anonymously and changes will not be saved.",
+					message: "Changes will not be saved.",
 				});
 
+				$rootScope.readOnly = false;
 				return;
 			}
 
@@ -271,6 +273,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						}
 
 						$rootScope.anonymous = $rootScope.participant == 'Anonymous';
+
 						$rootScope.surveyStatus = $rootScope.control['Status'];
 
 						var state = $rootScope.statusFlow[$rootScope.surveyStatus];
@@ -413,7 +416,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				return function(more) {
 					deferred.reject({
 						error: message + (more ? ': ' + more : ''),
-						message: "You are taking this survey anonymously and changes will not be saved."
+						message: "There was an error loading the answer database and changes will not be saved. Please contact your survey coordinator."
 					});
 				}
 			}
@@ -435,14 +438,18 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				loadControl().then(function() {
 					loadAnswers().then(function() {
 						loadNotes().then(function() {
+							// Let users do it online
 							if($rootScope.anonymous) {
 								deferred.resolve({
 									message: "You are taking this survey anonymously and changes will not be saved.",
 								});
+								$rootScope.readOnly = false;
 							}
+							// Bubble up errors ...
 							else if($rootScope.status.error) {
 								deferred.resolve($rootScope.status);
 							}
+							// Loaded
 							else {
 								deferred.resolve({
 									message: "Loaded",
@@ -479,7 +486,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 			// Process a queue for the two sections
 			_.each([ 'responses', 'notes' ], function(section) {
-				if($rootScope.readOnly) {
+				if($rootScope.readOnly || $rootScope.anonymous) {
 					return;
 				}
 
@@ -1247,12 +1254,12 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					message: "Loading..."
 				};
 
-				// Get sheets in master sheet,
+				// Get sheets in answer sheet:
 				gs.getSheets(MASTER_KEY, $rootScope.accessToken).then(function(sheets) {
 					// Check for required 'Sections' sheet
 					if(!sheets['Sections']) {
 						$rootScope.loading = false;
-						$rootScope.error = "Could't find 'Sections' sheet!";
+						$rootScope.error = "Couldn't find 'Sections' sheet!";
 						return;
 					}
 
@@ -1267,6 +1274,12 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 						$rootScope.loading = false;
 						$rootScope.loaded = true;
 					});
+				}, function() {
+					$rootScope.loading = false;
+					$rootScope.readOnly = false;
+					$rootScope.status = {
+						message: "Could not access survey."
+					}
 				});
 			}
 

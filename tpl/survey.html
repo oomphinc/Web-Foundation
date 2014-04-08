@@ -13,7 +13,7 @@
 		<span ng-if="status.success" class="icon-checkmark"></span> {{ status.message }}
 	</p>
 
-	<p ng-if="readOnly && !loading">This survey currently read-only. No changes will be saved.</p>
+	<p ng-if="status.readOnly">{{ status.readOnly }}</p>
 		
 </div>
 
@@ -58,7 +58,7 @@
 				</a>
 			</li>
 
-			<li ng-if="!readOnly" ng-click="complete(true)" class="button complete-button">
+			<li ng-if="!anonymous && !readOnly" ng-click="complete(true)" class="button complete-button">
 				Complete Survey
 			</li>
 		</ul>
@@ -78,7 +78,7 @@
 			<button class="previous-button" ng-if="$index > 0" ng-click="navigate(sectionOrder[$index-1])">&laquo; Previous: {{ sections[sectionOrder[$index-1]].section }}</button>
 			<button class="next-button" ng-if="$index < sectionOrder.length-1" ng-click="navigate(sectionOrder[$index+1])">Next: {{ sections[sectionOrder[$index+1]].section }} &raquo;</button>
 
-			<button class="complete-button" ng-if="!readOnly && statusFlow[surveyStatus] && (participant == 'Coordinator' || statusFlow[surveyStatus].party == participant) && $index == sectionOrder.length-1" ng-click="complete(true)">Complete Survey</button>
+			<button class="complete-button" ng-if="!anonymous && !readOnly && statusFlow[surveyStatus] && (participant == 'Coordinator' || statusFlow[surveyStatus].party == participant) && $index == sectionOrder.length-1" ng-click="complete(true)">Complete Survey</button>
 		</nav>
 	</section>
 </div>
