@@ -13,6 +13,7 @@
 		<script src="js/angular-route.min.js"></script>
 		<script src="js/angular-sanitize.min.js"></script>
 		<script src="js/w3f-angular-spreadsheets.js"></script>
+		<script src="js/w3f-load-survey.js"></script>
 		<script src="js/w3f-survey.js"></script>
 		<script src="https://apis.google.com/js/client:plusone.js?onload=gapi_loaded"></script>
 
@@ -39,15 +40,20 @@
 				<h2>Web Index Survey - 2014{{ country ? ' - ' + country : '' }}</h2>
 			</header>
 
-			<div id="sign-in" ng-show="showSignin" ng-class="ng-hide">
-				<p>Sign in with your Google account to participate.</p>
+			<div ng-if="error">{{ error }}</div>
 
-				<div class="ng-hide" ng-show="error">{{ error }}</div>
+			<div id="sign-in" ng-show="showSignin && !error" ng-class="ng-hide">
+				<p>Welcome to the Web Index Survey 2014. Sign in with your Google account to participate.</p>
+
+				<p><strong>VERY IMPORTANT NOTE:</strong> If you are accessing this survey on
+				a shared computer, please be sure to access this survey in
+				<strong>Incognito Mode</strong> and close the browser window when you
+				are finished.</p>
 
 				<span style="display: none" id="signin-button"></span>
 			</div>
 
-			<div id="survey" ng-view></div>
+			<div id="survey" ng-if="!error" ng-view></div>
 		</div>
 
 		<script src="js/chrome-only.js"></script>
