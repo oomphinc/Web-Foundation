@@ -416,7 +416,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				return function(more) {
 					deferred.reject({
 						error: message + (more ? ': ' + more : ''),
-						message: "There was an error loading the answer database and changes will not be saved. Please contact your survey coordinator."
+						message: "There was an error loading your answers and changes will not be saved."
 					});
 				}
 			}

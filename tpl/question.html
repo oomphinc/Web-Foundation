@@ -19,6 +19,8 @@
 		<a href="{{ helplink }}" target="w3f-help">Further question guidance &rarr;</a>
 	</p>
 	
+	<p ng-if="(question.wantjustification !== 'Yes') && question.justificationnote">{{ question.justificationnote }}</p>
+
 	<div ng-if="question.wantjustification == 'Yes'" class="justification">
 		<notes ng-if="!anonymous" field="'justification'" />
 
@@ -29,8 +31,9 @@
 		<textarea ng-model="response.justification" ng-disabled="readOnly"></textarea>
 	</div>
 
-
 	<div ng-if="supporting && !supporting.values || supporting.values.indexOf(response.response) > -1" ng-repeat="supporting in question.supporting" class="supporting">
+		<notes ng-if="!anonymous" field="supporting" />
+
 		<label>
 			{{ supporting.content }}
 			<textarea ng-model="response[supporting.id]" ng-disabled="readOnly"></textarea>
