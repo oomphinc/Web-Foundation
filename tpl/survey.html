@@ -74,7 +74,7 @@
 			<button class="previous-button" ng-if="$index > 0" ng-click="navigate(sectionOrder[$index-1])">&laquo; Previous: {{ sections[sectionOrder[$index-1]].section }}</button>
 			<button class="next-button" ng-if="$index < sectionOrder.length-1" ng-click="navigate(sectionOrder[$index+1])">Next: {{ sections[sectionOrder[$index+1]].section }} &raquo;</button>
 
-			<button class="complete-button" ng-if="!anonymous && !readOnly && statusFlow[surveyStatus] && (participant == 'Coordinator' || statusFlow[surveyStatus].party == participant) && $index == sectionOrder.length-1" ng-click="complete(true)">Complete Survey</button>
+			<button class="complete-button" ng-if="surveyStatus != 'complete' && !readOnly && statusFlow[surveyStatus] && (participant == 'Coordinator' || statusFlow[surveyStatus].party == participant) && $index == sectionOrder.length-1" ng-click="complete(true)">Complete Survey</button>
 		</nav>
 	</section>
 </div>

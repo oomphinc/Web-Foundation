@@ -312,39 +312,36 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 		function load() {
 			var deferred = $q.defer();
 
-			if(!answerKey) {
-				$rootScope.error = "Thanks for visiting the Web Index Survey. You are not currently participating in the survey.";
-				$rootScope.loading = false;
-				$rootScope.loaded = true;
-
-				deferred.reject();
-				return;
-			}
-
-			// Pull sheets from answer sheet and confirm they're all there.
-			gs.getSheets(answerKey, $rootScope.accessToken).then(function(sheets) {
-				for(var sheet in answerSheets) {
-					if(!sheets[sheet]) {
-						$rootScope.error = "Invalid response data";
-						return;
+			if(answerKey) {
+				// Pull sheets from answer sheet and confirm they're all there.
+				gs.getSheets(answerKey, $rootScope.accessToken).then(function(sheets) {
+					for(var sheet in answerSheets) {
+						if(!sheets[sheet]) {
+							$rootScope.error = "Invalid response data";
+							return;
+						}
+						else {
+							answerSheets[sheet] = sheets[sheet];
+						}
 					}
-					else {
-						answerSheets[sheet] = sheets[sheet];
-					}
-				}
 
-				loadControl().then(function() {
-					loadMaster().then(function(status) {
-						deferred.resolve(status);
-					}, function(status) {
-						deferred.reject(status.message);
-					})
+					loadControl().then(function() {
+						loadMaster().then(function(status) {
+							deferred.resolve(status);
+						}, function(status) {
+							deferred.reject(status.message);
+						})
+					}, function() {
+						deferred.reject("Unable to load response data.");
+					});
 				}, function() {
-					deferred.reject("Unable to load response data.");
+					deferred.reject("There was a problem loading the survey.");
 				});
-			}, function() {
-				deferred.reject("There was a problem loading the survey.");
-			});
+
+			}
+			else {
+				deferred.reject("Thanks for visiting the Web Index Survey. You are not currently participating in the survey.");
+			}
 
 			return deferred.promise;
 		}
