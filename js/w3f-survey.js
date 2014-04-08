@@ -12,7 +12,7 @@ Date.prototype.format = function() {
 	return this.toDateString() + ", " + this.toLocaleTimeString();
 }
 
-angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSanitize' ])
+angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies', 'ngRoute', 'ngSanitize' ])
 	// Setup route. There's only one route, and it's /<answerSheetKey>
 	.config([ '$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
 		$routeProvider.when('/:answerKey?', {
@@ -38,13 +38,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 	})
 
 	// Top-level controller
-	.controller('W3FSurveyController', [ 'spreadsheets', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', function(gs, $scope, $rootScope, $q, $cookies, $routeParams, $interval) {
+	.controller('W3FSurveyController', [ 'loader', 'spreadsheets', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', function(loader, gs, $scope, $rootScope, $q, $cookies, $routeParams, $interval) {
 		var answerKey = $routeParams.answerKey;
-		var answerSheets = {
-			'Control': null,
-			'Answers': null,
-			'Notes': null
-		};
 
 		// Who's doing the Survey? Determined by answer sheet, defaults to "Anonymous"
 		$rootScope.participant = 'Anonymous';
@@ -162,6 +157,54 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			}
 		};
 
+		// Save queue
+		var queue = {
+			responses: {},
+			notes: {}
+		};
+		
+		// Load the survey once we're ready.
+		$rootScope.$on('load-survey', function() {
+			loader.load(answerKey).then(function(status) {
+				$rootScope.status = status;
+				$rootScope.loaded = true;
+				$rootScope.loading = false;
+
+				$rootScope.$broadcast('loaded');
+
+				// Only now that the answer sheet has been loaded
+				// do we watch for changes to the responses that might
+				// come from the user.
+				//
+				// Watch responses to add any changes to the save queue
+				//
+				// BUG: oldValue and newValue are the same in this call from $watchCollection -
+				// See: https://github.com/angular/angular.js/issues/2621. 
+				_.each(_.keys($rootScope.questions), function(qid) {
+					$rootScope.$watch("responses['" + qid + "']", function(oldValue, newValue) {
+						if(oldValue !== newValue) {
+							queue.responses[qid] = newValue;
+						}
+					}, true);
+
+					// Also watch for changes in notes collections
+					$rootScope.$watch("notes['" + qid + "']", function(oldValue, newValue) {
+						if(oldValue !== newValue) {
+							queue.notes[qid] = newValue;
+							var sectionid = $rootScope.questions[qid].sectionid;
+
+							$rootScope.countNotes(sectionid);
+						}
+					}, true);
+				});
+			}, function(message) {
+				$rootScope.error = message;
+				$rootScope.loading = false;
+				$rootScope.readOnly = false;
+			});
+
+		})
+
 		/**
 		 * Accept a boolean or a string,
 		 *
@@ -178,7 +221,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 				if(!$rootScope.statusFlow[status]) {
 					$rootScope.status = {
-						error: "The survey is an invalid state and can not be submitted. Please contact your survey coordinator to remedy this.",
+						message: "The survey is an invalid state and can not be submitted. Please contact your survey coordinator to remedy this.",
+						error: true,
 						clear: 10000
 					};
 
@@ -219,260 +263,18 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 			if(!state) {
 				$rootScope.status = {
-					error: "Invalid status: `" + $rootScope.surveyStatus + "`. Please contact the Survey Coordinator to resolve this issue."
+					message: "Invalid status: `" + $rootScope.surveyStatus + "`. Please contact the Survey Coordinator to resolve this issue.",
+					error: true
 				}
 
 				return;
 			}
-		});
-
-		// Load answer sheet once questions have been loaded
-		$rootScope.$on('questions-loaded', function(ev, deferred) {
-			if(!answerKey) {
-				deferred.resolve({
-					message: "Changes will not be saved.",
-				});
-
-				$rootScope.readOnly = false;
-				return;
-			}
-
-			var loadControl = function() {
-				$rootScope.loading = "Loading Control...";
-
-				var q = $q.defer();
-
-				gs.getRows(answerKey, answerSheets.Control, $rootScope.accessToken, 'field').then(function(rows) {
-
-					_.each(rows, function(row, key) {
-						$rootScope.control[key] = row.value;
-						$rootScope.links['control'][key] = row[':links'];
-					});
-
-					// Ensure all required fields are defined:
-					var requiredFields = [ 'Coordinator Email', 'Researcher', 'Status' ]; 
-					var missingFields = _.filter(requiredFields, function(field) {
-						return typeof $rootScope.control[field] == 'undefined';
-					});
-
-					if(missingFields.length) {
-						q.reject("Missing field " + missingFields.join(', '));
-						return;
-					}
-					
-					if($rootScope.userEmail) {
-						// Who even are you?
-						if($rootScope.userEmail == $rootScope.control['Coordinator Email']) {
-							$rootScope.participant = 'Coordinator';
-						}
-						else if(hex_md5($rootScope.userEmail) == $rootScope.control['Researcher']) {
-							$rootScope.participant = 'Researcher';
-						}
-						else if(hex_md5($rootScope.userEmail) == $rootScope.control['Reviewer']) {
-							$rootScope.participant = 'Reviewer';
-						}
-
-						$rootScope.anonymous = $rootScope.participant == 'Anonymous';
-
-						$rootScope.surveyStatus = $rootScope.control['Status'];
-
-						var state = $rootScope.statusFlow[$rootScope.surveyStatus];
-
-						if(state && (state.party == $rootScope.participant || $rootScope.participant == 'Coordinator')) {
-							$rootScope.readOnly = false;
-						}
-					}
-
-					$rootScope.country = $rootScope.control['Country'];
-
-					q.resolve();
-				}, q.reject);
-
-				return q.promise;
-			}
-
-			var loadAnswers = function() {
-				$rootScope.loading = "Loading Answers...";
-
-				var q = $q.defer();
-
-				// Populate answers. This can be done in parralel with control data load
-				// since the data sets are distinct
-				gs.getRows(answerKey, answerSheets.Answers, $rootScope.accessToken).then(function(answers) {
-					angular.forEach(answers, function(answer) {
-						if(!$rootScope.questions[answer.questionid]) {
-							console.log("Answer with qid=" + answer.questionid + " does not correspond to any survey question");
-							return;
-						}
-
-						$rootScope.links.responses[answer.questionid] = answer[':links'];
-
-						var response = $rootScope.responses[answer.questionid]; 
-
-						// Copy all response properties from sheet into row
-						for(var col in answer) {
-							// Ignore metadata fields starting with :
-							if(col[0] != ':') {
-								response[col] = answer[col];
-							}
-						}
-
-						// Parse examples
-						angular.forEach([ 'example' ], function(field) {
-							var collection = [];
-
-							for(var i = 0; i <= 10; i++) {
-								var id = field + i;
-
-								if(typeof answer[id] == 'string' && answer[id] != '' ) {
-									var matches = answer[id].match(/^\[(.+)\]\((.+)\)$/);
-
-									var ex = {
-										title: '',
-										url: '',
-										locked: true,
-									};
-
-									if(matches) {
-										ex.title = matches[1];
-										ex.url = matches[2];
-									}
-									else if(answer[id].match(/^https?:$/)) {
-										ex.url = answer[id];
-									}
-									else {
-										ex.title = answer[id];
-									}
-
-									collection.push(ex);
-								}
-							}
-
-							response[field] = collection;
-						});
-					});
-
-					// Only now that the answer sheet has been loaded
-					// do we watch for changes to the responses that might
-					// come from the user.
-					//
-					// Watch responses to add any changes to the save queue
-					//
-					// BUG: oldValue and newValue are the same in this call from $watchCollection -
-					// See: https://github.com/angular/angular.js/issues/2621. 
-					_.each(_.keys($rootScope.questions), function(qid) {
-						$rootScope.$watch("responses['" + qid + "']", function(oldValue, newValue) {
-							if(oldValue !== newValue) {
-								queue.responses[qid] = newValue;
-							}
-						}, true);
-
-						// Also watch for changes in notes collections
-						$rootScope.$watch("notes['" + qid + "']", function(oldValue, newValue) {
-							if(oldValue !== newValue) {
-								queue.notes[qid] = newValue;
-								var sectionid = $rootScope.questions[qid].sectionid;
-
-								$rootScope.countNotes(sectionid);
-							}
-						}, true);
-					});
-
-					q.resolve();
-				}, q.reject);
-
-				return q.promise;
-			}
-
-			var loadNotes = function() {
-				$rootScope.loading = "Loading Notes...";
-
-				var q = $q.defer();
-
-				// Populate notes for each question
-				return gs.getRows(answerKey, answerSheets.Notes, $rootScope.accessToken).then(function(rows) {
-					_.each(rows, function(note) {
-						if(!$rootScope.notes[note.questionid]) {
-							console.log("Note with qid=" + note.questionid + " does not correspond to any survey question");
-							return;
-						}
-
-						$rootScope.notes[note.questionid].push(note);	
-					});
-
-					_.each($rootScope.sectionOrder, function(sectionid) {
-						$rootScope.countNotes(sectionid);
-					});
-
-					q.resolve();
-				}, q.reject);
-
-				return q.promise;
-			}
-
-			var loadError = function(message) {
-				$rootScope.error = message;
-
-				return function(more) {
-					deferred.reject({
-						error: message + (more ? ': ' + more : ''),
-						message: "There was an error loading your answers and changes will not be saved."
-					});
-				}
-			}
-
-			// Pull sheets from answer sheet and confirm they're all there.
-			gs.getSheets(answerKey, $rootScope.accessToken).then(function(sheets) {
-				for(var sheet in answerSheets) {
-					if(!sheets[sheet]) {
-						loadError("Invalid answer sheet.")();
-						return;
-					}
-					else {
-						answerSheets[sheet] = sheets[sheet];
-					}
-				}
-
-				// We now have confirmed the answer spreadsheet has all of the required sheets,
-				// load each one in sequence
-				loadControl().then(function() {
-					loadAnswers().then(function() {
-						loadNotes().then(function() {
-							// Let users do it online
-							if($rootScope.anonymous) {
-								deferred.resolve({
-									message: "You are taking this survey anonymously and changes will not be saved.",
-								});
-								$rootScope.readOnly = false;
-							}
-							// Bubble up errors ...
-							else if($rootScope.status.error) {
-								deferred.resolve($rootScope.status);
-							}
-							// Loaded
-							else {
-								deferred.resolve({
-									message: "Loaded",
-									success: true,
-									clear: 3000,
-								});
-							}
-						}, loadError("Invalid notes"));
-					}, loadError("Invalid answers"));
-				}, loadError("Invalid control"));
-			}, loadError("Invalid answer key"));
 		});
 
 		//
 		// Manage updating the answer sheet 
 		// 
 
-		// Queue up changes as responses or notes are updated
-		var queue = {
-			responses: {},
-			notes: {}
-		};
-		
 		// Keep timers for processes here, cancelling pending changes to an update process
 		// when newer changes have occured
 		var processQueue = {
@@ -626,7 +428,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 							}
 						}, function(message) {
 							$rootScope.status = {
-								error: "Failed to save changes" 
+								error: true,
+								message: "Failed to save changes" 
 							};
 						});
 					});
@@ -641,15 +444,13 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				}
 			}
 		}, 3000);
-
-		;
 	} ])
 
 	// Create a rail exactly the size of the sections menu
 	.directive('withRail', [ '$timeout', function($timeout) {
 		return {
 			link: function($scope, element, attrs) {
-				$scope.$on('sections-loaded', function() {
+				$scope.$on('loaded', function() {
 					$timeout(function() {
 						var $sections = $('#sections');
 						var $ul = $sections.find('ul');
@@ -1139,100 +940,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			}
 		});
 
-		// Populate the survey
-		function populate(sheets) {
-			var deferred = $q.defer();
-
-			// Populate "Sections" from sections sheet
-			var populateSections = function(rows) {
-				angular.forEach(rows, function(section) {
-					$rootScope.sectionOrder.push(section.sectionid);
-
-					// Default to first section
-					if(!$rootScope.activeSection) {
-						$rootScope.activeSection = section.sectionid;
-					}
-
-					$rootScope.sections[section.sectionid] = section;
-					$rootScope.sections[section.sectionid].questions = [];
-				});
-			};
-
-			// Populate "Questions" from questions sheet
-			var populateQuestions = function(rows) {
-				angular.forEach(rows, function(question) {
-					if(!$rootScope.sections[question.sectionid]) {
-						return;
-					}
-
-					// Gather various fields into arrays. Original fields are kept, this is just for ease of templates
-					angular.forEach([ 'option', 'guidance', 'supporting' ], function(field) {
-						question[field] = [];
-
-						for(var i = 0; i <= 10; i++) {
-							var id = field + i;
-
-							if(typeof question[id] == 'string' && question[id] != '' ) {
-								question[field].push({ weight: i, id: id, content: question[id] });
-							}
-						}
-					});
-
-					// Extract valid options from supporting information fields
-					angular.forEach(question.supporting, function(option) {
-						var matches = option.content.match(/^\s*(?:(\d+(?:\s*,\s*\d+)*)\s*;)?\s*(.+)\s*$/i);
-
-						option.values = matches[1] && matches[1].split(/\s*,\s*/);
-						option.content = matches[2];
-					});
-
-					// Put responses here. Initialize with blank response
-					$rootScope.responses[question.questionid] = {
-						questionid: question.questionid,
-						response: '',
-					};
-
-					// Put notes here.
-					$rootScope.notes[question.questionid] = [];
-					
-					// Update progress bar as responses are given
-					$rootScope.$watchCollection('responses["' + question.questionid + '"]', function(newValue) {
-						$rootScope.$broadcast('response-updated', newValue);
-					});
-
-					// Nest subquestions here
-					question.subquestions = [];
-
-					// Save a reference to the question by ID
-					$rootScope.questions[question.questionid] = question;
-
-					// Child questions, assume parent has already been registered.
-					if(question.parentid) {
-						$rootScope.questions[question.parentid].subquestions.push(question);
-					}
-					// Top-level question in this section
-					else {
-						$rootScope.sections[question.sectionid].questions.push(question);
-					}
-				});
-			}
-
-			// Load answer sheet and populate responses model
-			$rootScope.loading = "Loading Sections...";
-			gs.getRows(MASTER_KEY, sheets['Sections'], $rootScope.accessToken).then(function(sections) {
-				populateSections(sections);
-
-				$rootScope.loading = "Loading Questions...";
-				gs.getRows(MASTER_KEY, sheets['Questions'], $rootScope.accessToken).then(function(questions) {
-					populateQuestions(questions);
-
-					$rootScope.$broadcast('questions-loaded', deferred);
-				});
-			});
-
-			return deferred.promise;
-		}
-
 		function authenticated(authResult) {
 			if(!authResult || authResult.error) {
 				$rootScope.showSignin = true;
@@ -1254,33 +961,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 					message: "Loading..."
 				};
 
-				// Get sheets in answer sheet:
-				gs.getSheets(MASTER_KEY, $rootScope.accessToken).then(function(sheets) {
-					// Check for required 'Sections' sheet
-					if(!sheets['Sections']) {
-						$rootScope.loading = false;
-						$rootScope.error = "Couldn't find 'Sections' sheet!";
-						return;
-					}
-
-					// Load the survey
-					populate(sheets).then(function(status) {
-						$rootScope.status =	status;
-					}, function(status) {
-						$rootScope.status = status;
-					})
-					['finally'](function(status) {
-						$rootScope.$broadcast('sections-loaded');
-						$rootScope.loading = false;
-						$rootScope.loaded = true;
-					});
-				}, function() {
-					$rootScope.loading = false;
-					$rootScope.readOnly = false;
-					$rootScope.status = {
-						message: "Could not access survey."
-					}
-				});
+				$rootScope.$broadcast('load-survey');
 			}
 
 			// Get the user's email address, then continue loading

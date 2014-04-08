@@ -403,12 +403,19 @@ button {
 			color: white;
 			border-color: #3079ed;
 		}
+	
+.branding {
+	float: left;
+	width: 100%;
+	clear: both;
+}
 
 	.branding h1 {
 		padding-left: 186px;
 		width: 0;
 		height: 49px;
-		background: url(http://www.webfoundation.org/wp-content/themes/webfoundation/assets/img/logo_wf.gif);
+		background: url(logo.png);
+		background-size: 186px 49px;
 		overflow: hidden;
 		white-space: nowrap;
 
@@ -423,6 +430,7 @@ button {
 
 #sign-in {
 	clear: both;
+	font-size: 1.25em;
 }
 
 #wrapper {
@@ -449,15 +457,9 @@ button {
 	#status p {
 		margin: .5em;
 	}
-	#status .status-error {
-		border: 1px solid #fab3b7;
+	#status.status-error {
+		border-color: #fab3b7;
 		background-color: #fadbdd;
-		position: relative;
-		left: -1px;
-		padding: .3em .5em;
-		margin-left: -.5em;
-		top: -.3em;
-		width: 100%;
 	}
 
 #loading {

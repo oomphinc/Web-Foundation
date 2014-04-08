@@ -2,12 +2,8 @@
 	<h3>{{ loading }}</h3>
 </div>
 
-<div id="status" fade-on="status">
+<div id="status" fade-on="status" ng-class="{ 'status-error': status.error }">
 	<ng-pluralize count="status.saving" ng-if="status.saving" when="{ 'one': 'Saving...', 'other': 'Saving {} changes...' }"></ng-pluralize>
-
-	<p class="status-error" ng-if="status.error">
-		{{ status.error }}
-	</p>
 
 	<p ng-if="status.message">
 		<span ng-if="status.success" class="icon-checkmark"></span> {{ status.message }}
@@ -41,8 +37,8 @@
 
 					<p ng-if="control['Status Due']">
 						This phase of the survey must be completed by <strong>{{ control['Status Due'] }}.</strong>
-						
 					</p>
+
 				</div>
 			</div>
 		</div>
