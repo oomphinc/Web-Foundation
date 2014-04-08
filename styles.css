@@ -238,9 +238,16 @@ button {
 
 	.question-Option .response {
 		float: right;
+		position: relative;
+		margin-left: 3em;
 	}
-	.question-Options .open-notes {
-	}
+		.question-Option .response .open-notes {
+			top: 0;
+		}
+		.question-Option .response .notes {
+			left: auto;
+			right: 0;
+		}
 
 	.question-Option .fancy-select-options {
 		left: auto !important;
