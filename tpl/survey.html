@@ -54,7 +54,7 @@
 				</a>
 			</li>
 
-			<li ng-if="!anonymous && !readOnly" ng-click="complete(true)" class="button complete-button">
+			<li ng-if="surveyStatus != 'complete' && !anonymous && !readOnly" ng-click="complete(true)" class="button complete-button">
 				Complete Survey
 			</li>
 		</ul>
