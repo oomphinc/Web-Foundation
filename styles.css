@@ -404,12 +404,30 @@ button {
 			border-color: #3079ed;
 		}
 
+	.branding h1 {
+		padding-left: 186px;
+		width: 0;
+		height: 49px;
+		background: url(http://www.webfoundation.org/wp-content/themes/webfoundation/assets/img/logo_wf.gif);
+		overflow: hidden;
+		white-space: nowrap;
+
+		float: left;
+	}
+	.branding h2 {
+		line-height: 49px;
+		vertical-align: middle;
+		float: right;
+		color: #444;
+	}
+
 #sign-in {
 	clear: both;
 }
 
 #wrapper {
 	max-width: 1024px;
+	min-width: 600px;
 	margin: 1.75em 1em;
 }
 
@@ -424,10 +442,13 @@ button {
 	background-color: #fcfac6;
 	border: 1px solid #feef9c;
 	box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-	padding: .3em .5em;
+	text-align: center;
 
 	z-index: 20;
 }
+	#status p {
+		margin: .5em;
+	}
 	#status .status-error {
 		border: 1px solid #fab3b7;
 		background-color: #fadbdd;
@@ -444,22 +465,6 @@ button {
 	padding: 2em;
 	clear: both;
 }
-	#branding h1 {
-		padding-left: 186px;
-		width: 0;
-		height: 49px;
-		background: url(http://www.webfoundation.org/wp-content/themes/webfoundation/assets/img/logo_wf.gif);
-		overflow: hidden;
-		white-space: nowrap;
-
-		float: left;
-	}
-	#branding h2 {
-		line-height: 49px;
-		vertical-align: middle;
-		float: right;
-		color: #444;
-	}
 
 #sections {
 	position: fixed;
@@ -490,9 +495,11 @@ button {
 	white-space: nowrap;
 
 	background: #e2e2e2; /* Old browsers */
+	padding-right: 4em;
 }
 	#sections li .note-count {
 		float: right;
+		margin-right: -4em;
 	}
 		#sections li .note-count .icon-bubble {
 			color: #66c;

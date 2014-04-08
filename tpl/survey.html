@@ -5,15 +5,16 @@
 <div id="status" fade-on="status">
 	<ng-pluralize count="status.saving" ng-if="status.saving" when="{ 'one': 'Saving...', 'other': 'Saving {} changes...' }"></ng-pluralize>
 
+	<p class="status-error" ng-if="status.error">
+		{{ status.error }}
+	</p>
+
+	<p ng-if="status.message">
+		<span ng-if="status.success" class="icon-checkmark"></span> {{ status.message }}
+	</p>
+
 	<p ng-if="readOnly && !loading">This survey currently read-only. No changes will be saved.</p>
 		
-	<div class="status-error" ng-if="status.error">
-		{{ status.error }}
-	</div>
-
-	<div ng-if="status.message">
-		<span ng-if="status.success" class="icon-checkmark"></span> {{ status.message }}
-	</div>
 </div>
 
 <div class="ng-hide" ng-show="!loading" ng-cloak>

@@ -59,7 +59,7 @@
 	<div ng-if="question.guidance.length" class="guidance-container">
 		<h4>Guidance:</h4>
 
-		<div class="guidance" ng-repeat="guidance in question.guidance" ng-style="{ maxWidth: (100 / question.guidance.length) + '%' }" ng-bind-html="(question.guidance.length > 1 ? guidance.weight + ' - ' : '') + guidance.content | markdown">
+		<div class="guidance" ng-repeat="guidance in question.guidance" ng-style="{ width: (100 / question.guidance.length) + '%' }" ng-bind-html="(question.guidance.length > 1 ? guidance.weight + ' - ' : '') + guidance.content | markdown">
 		</div>
 	</div>
 

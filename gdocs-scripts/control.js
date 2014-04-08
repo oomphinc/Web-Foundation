@@ -1,4 +1,4 @@
-/*
+/**
  * We make use of version 21 of the DocListExtended class from 
  * https://sites.google.com/site/scriptsexamples/new-connectors-to-google-services/driveservice
  * This has addCommenter and removeCommenter support
@@ -20,10 +20,44 @@ function onOpen() {
     {
       name: "Setup Answer Sheet",
       functionName: 'setupAnswerSheetHandler'
+    },
+    {
+      name: "Refresh Sheets",
+      functionName: 'refreshSheetHandler'
     }
   ];
   
   ass.addMenu("Actions", menuEntries);
+}
+
+/**
+ * Return the survey URL for a particular answer sheet key
+ */
+function surveyUrl(key) {
+  return 'http://w3f.com/' + key;
+}
+
+/**
+ * Get participants for a particular survey row
+ */
+function getParticipants(row) {
+  var ass = SpreadsheetApp.getActiveSpreadsheet();  
+  var control = ass.getSheetByName('Control');
+  
+  return {
+    coordinator: {
+      name: control.getRange("K" + row).getValue(),
+      emails: control.getRange("L" + row).getValue().split(/\s*,\s*/)
+    },
+    researcher: {
+      name: control.getRange("M" + row).getValue(),
+      emails: control.getRange("N" + row).getValue().split(/\s*,\s*/)
+    },
+    reviewer: {
+      name: control.getRange("O" + row).getValue(),
+      emails: control.getRange("P" + row).getValue().split(/\s*,\s*/)
+    }
+  };
 }
 
 /**
@@ -35,45 +69,75 @@ function setupAnswerSheet(sheet, row) {
   
   var cell = ass.getActiveCell();
   var control = ass.getSheetByName('Control');
-  var country = control.getRange(i, 2).getValue();
+  var country = control.getRange(row, 2).getValue();
 
   ass.toast(country, "Setting Answer sheet permissions...", -1);
   
   // Configure sharing
   var file = DriveApp.getFileById(sheet.getId());
   
-  file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.VIEW);
+  file.setSharing(DriveApp.Access.DOMAIN, DriveApp.Permission.EDIT);
+  
+  file.setShareableByEditors(false);
+  file.setDescription("Read-only answer sheet for " + country + ". Please do not access this sheet directly: instead, use the survey found at " + surveyUrl(sheet.getId()));
+  
+  var answerSheet = SpreadsheetApp.openById(sheet.getId());
   
   var editors = file.getEditors();
-  var reviewer = control.getRange("P" + cell.getRow()).getValue();
-  var researcher = control.getRange("N" + cell.getRow()).getValue();
   
   // Remove all editors, re-add reviewer and researcher
   for(var i = 0; i < editors.length; i++) {
-    file.addEditor(emailAddress)
+    try {
+      answerSheet.removeEditor(editors[i]);
+    }
+    catch(e) {
+      Logger.log("Well, I tried to remove " + editors[i].getName() + "...");
+    }
   }
   
+  var participants = getParticipants(row);
+  
+  answerSheet.addEditor(participants.coordinator.emails[0]);
+  answerSheet.addEditor(participants.researcher.emails[0]);
+  answerSheet.addEditor(participants.reviewer.emails[0]);
+
   // Set up Control sheet  
   var answerControl = sheet.getSheetByName('Control');
 
   ass.toast("Updating control...", country, -1);
   
+  setValue(answerControl, 'Key', sheet.getId());
   setValue(answerControl, 'Country', country);
   
   ass.toast("Setting Reviewer in answer sheet...", country, -1);
-  setValue(answerControl, 'Coordinator Name', control.getRange("K" + cell.getRow()).getValue());
-  setValue(answerControl, 'Coordinator Email', control.getRange("L" + cell.getRow()).getValue()); 
+  setValue(answerControl, 'Coordinator Name', participants.coordinator.name);
+  setValue(answerControl, 'Coordinator Email', participants.coordinator.emails[0]);
 
-  ass.toast("Setting Researcher in answer sheet...", country, -1);    
-  setValue(answerControl, 'Researcher', hex_md5(researcher));
+  ass.toast("Setting Researcher in answer sheet...", country, -1);
+  setValue(answerControl, 'Researcher', hex_md5(participants.researcher.emails[0]));
   
   ass.toast("Setting Reviewer in answer sheet...", country, -1);
-  setValue(answerControl, 'Reviewer', hex_md5(reviewer));
+  setValue(answerControl, 'Reviewer', hex_md5(participants.researcher.emails[0]));
   
+  ass.toast("Setting Status in answer sheet...", country, -1);
+
+  var states = loadStates();
+  var stateLabel = control.getRange("E" + row).getValue();
+
+  for(var state in states) {
+    if(states[state].label == stateLabel) {
+      setValue(answerControl, 'Status', state);
+      break;
+    }
+  }
+
+  var due = control.getRange("J" + row).getValue();
+  if(due) {
+    ass.toast("Setting Statue Due date in answer sheet...", country, -1);
+    setValue(answerControl, 'Status Due', due);
+  }
+
   ass.toast('Done');
-  
-  // Log
-  noteLog(i, "Set up sheet" + sheet.getId());
 }
 
 /**
@@ -87,7 +151,7 @@ function setupAnswerSheetHandler() {
 
   if(range.getSheet().getSheetId() != control.getSheetId()) {
     Browser.msgBox('Please select a row in the "Control" spreadsheet.');
-  } 
+  }
 
   for(var i = range.getRow(); i <= range.getLastRow(); i++) {
     if(i == 1) {
@@ -117,7 +181,6 @@ function setupAnswerSheetHandler() {
     setupAnswerSheet(ss, i);
   }
 }
-
 
 /**
  * Create new Answer sheet from Answer template. 
@@ -151,7 +214,6 @@ function createAnswerSheetHandler() {
       ass.toast("There is no country for row " + i);
       continue;
     }    
-
     
     if(control.getRange("Q" + i).getValue() != '') {
       ass.toast("Answer Sheet already exists", country);
@@ -164,8 +226,268 @@ function createAnswerSheetHandler() {
 
       control.getRange("Q" + i).setValue(newSheet.getId());
       
-      setupAnswerSheet(newSheet);
+      setupAnswerSheet(newSheet, i);
     }
+  }
+}
+
+/**
+ * Load all answer sheets
+ */
+function refreshSheetHandler() {
+  var ass = SpreadsheetApp.getActiveSpreadsheet();
+
+  var range = ass.getActiveRange();
+  var control = ass.getSheetByName('Control');
+
+  if(range.getSheet().getSheetId() != control.getSheetId()) {
+    Browser.msgBox('Please select a range in the "Control" spreadsheet.');
+  } 
+
+  for(var i = range.getRow(); i <= range.getLastRow(); i++) {    
+    if(i == 1) {
+      ass.toast("Can't operate on header row...");
+      continue;
+    }
+    
+    var country = control.getRange(i, 2).getValue();
+    
+    if(country == '') {
+      ass.toast("There is no country for row " + i);
+      continue;
+    }    
+
+    var answerSheetKey = control.getRange("Q" + i).getValue();
+    
+    if(!answerSheetKey) {
+      ass.toast("There is no answer sheet for row " + i, country);
+      continue;
+    }
+    
+    var answerSheet = SpreadsheetApp.openById(answerSheetKey);
+    
+    if(!answerSheet) {
+      ass.toast("Could not open answer sheet", country);
+      continue;
+    }
+    else {   
+      refreshAnswerSheet(answerSheet, i);
+    }
+  }
+}
+
+/**
+ * Load survey master table from master template
+ */
+function loadSurveyMaster() {
+  if(loadSurveyMaster.master) {
+    return loadSurveyMaster.master;
+  }
+  
+  var sectionOrder = [], sections = {}, questions = {};
+  
+  var surveyMasterKey = getConfig('master_sheet');
+  var surveyMaster = SpreadsheetApp.openById(surveyMasterKey);
+
+  if(!surveyMaster) {
+    return;
+  }
+  
+  var sectionSheet = surveyMaster.getSheetByName("Sections");
+  var questionSheet = surveyMaster.getSheetByName("Questions");
+
+  for(var i = 2; i <= sectionSheet.getMaxRows(); i++) {
+    var sectionId = sectionSheet.getRange(i, 1).getValue();
+    
+    sectionOrder.push(sectionId);
+    
+    sections[sectionId] = {
+      section: sectionSheet.getRange(i, 2).getValue(),
+      questions: []
+    };
+  }
+  
+  for(var i = 2; i <= questionSheet.getMaxRows(); i++) {
+    var sectionId = questionSheet.getRange(i, 1).getValue();
+    
+    if(!sectionId || !sections[sectionid]) {
+      continue;
+    }
+    
+    var questionId = questionSheet.getRange(i, 2).getValue();
+    
+    var question = {
+      questionId: questionSheet.getRange(i, 2).getValue(),
+      question: questionSheet.getRange(i, 3).getValue(),
+      type: questionSheet.getRange(i, 4).getValue(),
+      parentId: questionSheet.getRange(i, 5).getValue(),
+    };
+    
+    question.section = sections[sectionId];
+    
+    sections[sectionId].questions.push(question);
+    questions[questionId] = question;
+  }
+  
+  loadSurveyMaster.master = {
+    sectionOrder: sectionOrder,
+    sections: sections,
+    questions: questions
+  };
+  
+  return loadSurveyMaster.master;
+}
+
+/**
+ * Load a map of the valid states
+ */
+function loadStates() {
+  if(loadStates.states) {
+    return loadStates.states;
+  }
+  
+   // Pull state slug out of StatusList sheet
+  var ass = SpreadsheetApp.getActiveSpreadsheet(),
+      stateSheet = ass.getSheetByName("StatusList"),
+      stateGrid = stateSheet.getRange(1, 1, stateSheet.getMaxRows(), 5).getValues(),
+      states = {};
+  
+  for(var i = 1, row; i < stateGrid.length, row = stateGrid[i]; i++) {
+    for(var j = 0; j < row.length; j++) {
+      states[row[1]] = {
+        label: row[0],
+        state: row[1],
+        description: row[2],
+        actions: row[3],
+        days: row[4]
+      }
+    }
+  } 
+  
+  Logger.log("states: " + JSON.stringify(states));
+  loadStates.states = states;
+  
+  return states;
+}
+
+/**
+ * Load up the values in a Control sheet row
+ */
+function loadCountry(row) {
+  if(loadCountry.cache[row]) {
+    return loadCountry.states;
+  }
+  
+  var ass = SpreadsheetApp.getActiveSpreadsheet(),
+      control = ass.getSheetByName("Control"),
+      columns = control.getRange(1, 1, 1, control.getMaxColumns()).getValues(),
+      values = control.getRange(row, 1, 1, control.getMaxColumns()).getValues(),
+      vals = {};
+  
+  for(var j = 0, column; j < columns[0].length, column = columns[0][j]; j++) {
+    // Turn header wordsIntoCamelCase
+    words = column.split(/\s+/);
+	camelCase = '';
+    
+    words.map(function(w, i) {
+      camelCase += (function(l) { return i > 0 ? l.charAt(0).toUpperCase() + l.slice(1) : l })(w.toLowerCase());
+    });
+
+    vals[camelCase] = values[0][j];
+  }
+  
+  loadStates.cache[row] = vals;
+  
+  return vals;
+}
+loadCountry.cache = {};
+
+
+/**
+ * Refresh the answers from a particular answer sheet and update status.
+ * If newStatus is falsy, then use status from answer sheet, otherwise override
+ * with newStatus.
+ */
+function refreshAnswerSheet(sheet, i, newStatus) {
+  var ass = SpreadsheetApp.getActiveSpreadsheet();
+  var control = ass.getSheetByName('Control');
+
+  var country = control.getRange(i, 2).getValue();
+
+  ass.toast("Reading answer sheet", country);
+  
+  var answerControl = sheet.getSheetByName("Control"),
+      answerControlValues = {},
+      answerControlRange = answerControl.getRange(2, 1, answerControl.getMaxRows(), 2);
+  
+  for(var i = 0, row; i < answerControlRange.length, row = answerControlRange[i]; i++) {    
+    answerControlValues[row[0]] = row[1];   
+  }
+
+  var states = loadStates(), statusChanged = false;
+
+  // Force a new status on the control sheet
+  if(newStatus) {
+    setValue(answerControl, "Status", newStatus);
+    statusChanged = newStatus;
+  }
+  // Read an updated status from the control sheet
+  else if(states[answerControlValues['Status']].label != control.getRange(i, 5)) {
+    control.getRange(i, 5).setValue(states[answerControlValues['Status']].label);
+    statusChanged = answerControlValue['Status'];
+  }
+  
+  if(statusChanged) {
+    if(states[statusChanged].days) {
+      // Go from today if no due date is set
+      if(!dueDate) {
+        dueDate = new Date();
+      }
+      var newDueDate = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate() + states[statusChanged].days);
+    
+      // Status has changed, due date has not. Update due date.
+      if(dueDate == answerControlValues['Status Due']) {
+        setValue(answerControl, "Status Due", newDueDate.toDateString());
+        control.getRange(i, 10).setValue(newDueDate.toDateString());        
+      }
+    }
+    else {
+      setValue(answerControl, "Status Due", '');
+      control.getRange(i, 10).setValue('');
+    }
+  }
+  
+  var answers = sheet.getSheetByName("Answers");
+  var master = loadSurveyMaster();
+  var firstColumn = 21; // "U" first column in which answer counts appear
+  var total;
+  var answers = {}; // Count of answers by section
+  
+  for(var j = 2; j <= answers.getMaxRows(); j++) {
+    var questionId = answers.getRange(j, 1).getValue();
+    var question = master.questions[questionId];
+  
+    if(!question) {
+      continue;
+    }
+    
+    if(answers.getRange(j, 2) != '-') {
+      answers[question.sectionId]++;
+    }
+  }
+   
+  for(var j = 0; j < master.sectionOrder.length; j++) {
+    var sectionId = master.sectionOrder[j];    
+    var total = section.questions.length;
+    
+    control.getRange(i, firstColumn + j).setValue(answers[sectionId]);
+
+    if(answers[sectionId] == total) {
+      control.getRange(i, firstColumn + j).setBackground("Green");
+    }
+    else {
+      control.getRange(i, firstColumn + j).setBackground("Red");
+    }    
   }
 }
 
@@ -262,26 +584,6 @@ function archiveSheet(id, stage) {
     copy.addToFolder(folder);
 }
 
-/** 
- * Copy the sheet specified in master_sheet to a new location, named after the country code and country.
- */ 
-function copySheet(countryCode, country) {
-  masterSheetID = getConfig("master_sheet");
-  folderID = getConfig("folder");
-
-  var masterSheet = DocsList.getFileById(masterSheetID);
-  var folder = DocsList.getFolderById(folderID);
-  var copy = masterSheet.makeCopy(countryCode + " - " + country + " - Open Data Barometer");
-  copy.addToFolder(folder);
-  
-  var newSheet = SpreadsheetApp.open(copy);
-  
-  newSheet.getSheetByName("Dashboard").getRange("D3").setValue(country);  
-  Logger.log("Created" + countryCode + " - " + country + " - Open Data Barometer");  
-  return copy.getId(); 
-}
-
-
 function shareWithResearcher(sheetID,researcherEmail) {
   handbookID = getConfig("handbook");
   researcherAccount = getAccount(researcherEmail);
@@ -329,87 +631,80 @@ function shareWithReviewer(sheetID,reviewerEmail,countrycode) {
   file.addEditor(reviewerAccount.username);
   
   var handbook = DocsList.getFileById(handbookID);
-  handbook.addViewer(reviewerAccount.username);
-  
+  handbook.addViewer(reviewerAccount.username); 
 }
 
+/**
+ * Refresh data from all active survey spreadsheets periodically. 
+ * Use "Last Updated" column to track when a survey was last refreshed.
+ * Only perform refresh operation if the survey sheet was updated after this timestamp.
+ */
+function hourlyUpdate(event) {
+
+}
+ 
 /**
  * Handle changes to the status column to move the sheet through the different processes
  */
 function onUpdate(event) {
   // Only pay attention to changes on "Status" column
-  if(event.range.getColumn() != 5 || event.source.getSheetName() != "Control" || !event.value) {
+  if(event.range.getColumn() != 5 || event.range.getRow() == 1 || event.source.getSheetName() != "Control" || !event.value) {
     return;
   }
   
-  var row = event.range.getRow();
-  
-  if(row == 1) {
-    return;
-  }
-  
-  var ass = SpreadsheetApp.getActiveSpreadsheet();
-  
-  // Pull state slug out of StatusList sheet
-  var stateSheet = ass.getSheetByName("StatusList"),
+  var states = loadStates(),
+      row = event.range.getRow(),
+      ass = SpreadsheetApp.getActiveSpreadsheet(),
       state = event.value,
-      status = null;
+      status;
   
-  for(var i = 1; i < stateSheet.getMaxRows(); i++) {
-    if(stateSheet.getRange(i, 1).getValue() == state) {
-      status = stateSheet.getRange(i, 2);
+  Logger.log(JSON.stringify(states) + " , " + state);
+  // Pull state slug out of StatusList sheet  
+  for(status in states) {
+    if(states[status].label == state) {
+      // Get state object and key
+      state = status;
+      status = states[status];
       break;
     }
-  } 
-  
-  if(!status) {
+  }
+
+  if(typeof status != "object") {
     Browser.msgBox("Couldn't find associated status for state " + state);
     return;
   }
   
-  var control = ass.getSheetByName('Control');
-  
-  // Normalize selected row values into values array keyed by camelCase'd header
-  var header = control.getRange(1, 1, 1, control.getMaxColumns());
-  
-  // Make a map of sub => values, where sub is given by the camelCase'd header value,
-  // and is used in text substitution for emails, etc.
-  var vals = {};
-  
-  for(var j = 1; j <= control.getMaxColumns(); j++) {
-    var text = control.getRange(1, j).getValue();
-    var words = text.split(/\s+/);
+  var control = ass.getSheetByName('Control'),
+      vals = loadCountry(row);
 
-    // Make wordsIntoCamelCase
-    text = '';
-    
-    words.map(function(w, i) {
-      text += (function(l) { i > 0 ? l.charAt(0).toUpperCase() + l.slice(1) : l })(w.toLowerCase());
-    });
-
-    vals[text] = control.getRange(row, j).getValue();
+  // De-aggregate email addresses
+  vals.coordinatorEmail = vals.coordinatorEmail.split(/\s*,\s*/);
+  vals.researcherEmail = vals.researcherEmail.split(/\s*,\s*/);
+  vals.reviewerEmail = vals.reviewerEmail.split(/\s*,\s*/);
+                                                
+  // And then some additional subs
+  vals.surveyUrl = getConfig('survey_url') + vals.answerSheet;
+  
+  Logger.log("vals: " + JSON.stringify(vals));
+  
+  // Sanity checks. Don't do anything for reset
+  if(state == 'recruitment') {
+    Logger.log("State moved to recruitment. Nothing happened!");
+    return;
   }
   
-  // And then some additional subs
-  vals.surveyUrl = getConfig('survey_url') + subs.answerSheet;
-  
-  // TODO: Researcher / Reviewer Google addresses
-  
-  // Sanity checks
-  if(status != 0) {
-    if(vals.answerSheet == '') {
-      Browser.msgBox("No answer sheet for this country yet. Please assign an answer sheet first.");
-
-      control.getRange(row, 5).setValue("0. Recruitment");
-      return;
-    }
+  if(vals.answerSheet == '') {
+    Browser.msgBox("No answer sheet for this country yet. Please assign an answer sheet first.");
     
-    if(vals.researcherGoogle == '') {
-      Browser.msgBox("No researcher google address found for the researcher yet. Please assign a researcher first.");
-      control.getRange(row, 5).setValue("0. Recruitment");
-      return;
-    }
-  }  
+    control.getRange(row, 5).setValue(states.recruitment.label);
+    return;
+  }
+  
+  if(vals.researcherEmail[0] == '') {
+    Browser.msgBox("No researcher google address found for the researcher yet. Please assign a researcher first.");
+    control.getRange(row, 5).setValue(states.recruitment.label);
+    return;
+  }
   
   // Get email of current user for saving notes
   var userEmail = Session.getUser().getEmail();
@@ -510,7 +805,7 @@ function onUpdate(event) {
     case 'review':
       var time_limit = 5;
 
-      if(!vals.reviewerName || !vals.reviewerGoogle) {
+      if(!vals.reviewerName || !vals.reviewerEmail[0]) {
         Browser.msgBox("No Reviewer email provided for " + vals.country, "Error");
         return;
       }
@@ -588,7 +883,7 @@ function mailAlert(status, subs) {
     if(emailSheet.getRange(i,1).getValue() == status) {
       email = {
         // Recipients are separated and interpreted with substitution vars and sent literally
-        recipients: emailSheet.getRange(i,2).getValue().split(','),
+        recipients: emailSheet.getRange(i,2).getValue(),
         subject: emailSheet.getRange(i,3).getValue(),
         body: emailSheet.getRange(i,4).getValue(),
         // Attachments are references to keys defined in "Config" sheet
@@ -613,7 +908,7 @@ function mailAlert(status, subs) {
   });
  
   MailApp.sendEmail({
-    to: email.recipients.join(','),
+    to: email.recipients,
     cc: subs.coordinatorEmail,
     subject: email.subject,
     name: "The Web Index Survey",
@@ -638,3 +933,4 @@ function authorise() {
   DocsList.getFileById(handbook);
   DocsList.getFolderById(folderID);
 }
+

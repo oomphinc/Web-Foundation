@@ -133,21 +133,21 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 			'assigned': {
 				party: 'Researcher',
 				nextStates: [ 'spotcheck' ],
-				label: "Initial Research",
+				label: "Research",
 			},
 			'spotcheck': {
 				party: 'Coordinator',
 				nextStates: [ 'clarification', 'review' ],
-				label: "Initial Spot-Check",
+				label: "Spot-Check",
 			},
 			'clarification': {
 				party: 'Researcher',
-				nextStates: [ 'review' ],
+				nextStates: [ 'spotcheck' ],
 				label: "Clarification"
 			},
 			'review': {
 				party: 'Reviewer',
-				nextStates: [ 'clarification', 'validation' ],
+				nextStates: [ 'spotcheck', 'validation' ],
 				label: "Review"
 			},
 			'validation': {
@@ -686,12 +686,12 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 				var timeoutPromise;
 
 				if(!$scope.$eval(attrs.fadeOn)) {
-					element.hide();
+					element.addClass('ng-hide');
 				}
 
 				$scope.$watch(attrs.fadeOn, function(val) {
 					if(val) {
-						element.show();
+						element.removeClass('ng-hide');
 					}
 
 					$timeout.cancel(timeoutPromise);
@@ -866,6 +866,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'ngCookies', 'ngRoute', 'ngSani
 
 			link: function($scope, element, attrs) {
 				$scope.placeholder = attrs.placeholder ? $scope.$eval(attrs.placeholder) : '';
+				$scope.$watch(attrs.placeholder, function(oldValue, newValue) {
+					if(oldValue !== newValue) {
+						$scope.placeholder = $scope.$eval(attrs.placeholder);
+					}
+				});
 
 				$scope.$parent.$watch(attrs.ngDisabled, function(val) {
 					$scope.disabled = val;
