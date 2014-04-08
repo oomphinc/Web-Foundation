@@ -504,7 +504,6 @@ button {
 	white-space: nowrap;
 
 	background: #e2e2e2; /* Old browsers */
-	padding-right: 4em;
 }
 	#sections li .note-count {
 		float: right;
@@ -538,6 +537,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 		cursor: pointer;
 		display: block;
 		padding: .5em;
+		padding-right: 4.5em;
 	}
 	#sections .complete-button {
 		width: 100%;
