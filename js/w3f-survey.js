@@ -1,4 +1,4 @@
-var MASTER_KEY = '0AokPSYs1p9vhdEdjeUluaThWc2RqQnI0c21oN1FaYUE';
+var MASTER_KEY = '0ApqzJROt-jZ0dGNoZFFtMnB3dVctNWxyc295dENFWHc';
 var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
 var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/userinfo.email';
 
