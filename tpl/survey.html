@@ -3,7 +3,7 @@
 </div>
 
 <div id="status" fade-on="status" ng-class="{ 'status-error': status.error }">
-	<ng-pluralize count="status.saving" ng-if="status.saving" when="{ 'one': 'Saving...', 'other': 'Saving {} changes...' }"></ng-pluralize>
+	<p ng-if="status.saving"><ng-pluralize count="status.saving" when="{ 'one': 'Saving...', 'other': 'Saving {} changes...' }"></ng-pluralize></p>
 
 	<p ng-if="status.message">
 		<span ng-if="status.success" class="icon-checkmark"></span> {{ status.message }}

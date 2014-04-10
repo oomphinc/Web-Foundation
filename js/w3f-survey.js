@@ -351,7 +351,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 							pq[qid] = [ gs.updateRow(links[qid].edit, record, $rootScope.accessToken) ];
 						}
 						else {
-							pq[qid] = [ gs.insertRow(answerSheets.Answers, record, $rootScope.accessToken) ];
+							pq[qid] = [ gs.insertRow($rootScope.answerSheets.Answers, record, $rootScope.accessToken) ];
 						}
 					}
 					else if(section == 'notes') {
@@ -365,7 +365,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 								note: note.note
 							};
 
-							var promise = gs.insertRow(answerSheets.Notes, record, $rootScope.accessToken);
+							var promise = gs.insertRow($rootScope.answerSheets.Notes, record, $rootScope.accessToken);
 
 							promise.then(function(row) { delete note.create; return row; });
 

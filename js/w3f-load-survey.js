@@ -4,7 +4,7 @@
 angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 	.factory('loader', [ 'spreadsheets', '$rootScope', '$q', function(gs, $rootScope, $q) {
 		var answerKey;
-		var answerSheets = {
+		$rootScope.answerSheets = {
 			'Control': null,
 			'Answers': null,
 			'Notes': null
@@ -16,7 +16,7 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 
 			var q = $q.defer();
 
-			gs.getRows(answerKey, answerSheets.Control, $rootScope.accessToken, 'field').then(function(rows) {
+			gs.getRows(answerKey, $rootScope.answerSheets.Control, $rootScope.accessToken, 'field').then(function(rows) {
 				_.each(rows, function(row, key) {
 					$rootScope.control[key] = row.value;
 					$rootScope.links['control'][key] = row[':links'];
@@ -190,7 +190,7 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 
 				// Populate answers. This can be done in parralel with control data load
 				// since the data sets are distinct
-				gs.getRows(answerKey, answerSheets.Answers, $rootScope.accessToken).then(function(answers) {
+				gs.getRows(answerKey, $rootScope.answerSheets.Answers, $rootScope.accessToken).then(function(answers) {
 					angular.forEach(answers, function(answer) {
 						if(!$rootScope.questions[answer.questionid]) {
 							console.log("Answer with qid=" + answer.questionid + " does not correspond to any survey question");
@@ -256,7 +256,7 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 				var q = $q.defer();
 
 				// Populate notes for each question
-				return gs.getRows(answerKey, answerSheets.Notes, $rootScope.accessToken).then(function(rows) {
+				return gs.getRows(answerKey, $rootScope.answerSheets.Notes, $rootScope.accessToken).then(function(rows) {
 					_.each(rows, function(note) {
 						if(!$rootScope.notes[note.questionid]) {
 							console.log("Note with qid=" + note.questionid + " does not correspond to any survey question");
@@ -278,13 +278,13 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 
 			// Pull sheets from answer sheet and confirm they're all there.
 			gs.getSheets(answerKey, $rootScope.accessToken).then(function(sheets) {
-				for(var sheet in answerSheets) {
+				for(var sheet in $rootScope.answerSheets) {
 					if(!sheets[sheet]) {
 						loadError("Invalid answer sheet.")();
 						return;
 					}
 					else {
-						answerSheets[sheet] = sheets[sheet];
+						$rootScope.answerSheets[sheet] = sheets[sheet];
 					}
 				}
 
@@ -315,13 +315,13 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 			if(answerKey) {
 				// Pull sheets from answer sheet and confirm they're all there.
 				gs.getSheets(answerKey, $rootScope.accessToken).then(function(sheets) {
-					for(var sheet in answerSheets) {
+					for(var sheet in $rootScope.answerSheets) {
 						if(!sheets[sheet]) {
 							$rootScope.error = "Invalid response data";
 							return;
 						}
 						else {
-							answerSheets[sheet] = sheets[sheet];
+							$rootScope.answerSheets[sheet] = sheets[sheet];
 						}
 					}
 
