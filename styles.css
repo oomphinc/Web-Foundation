@@ -364,8 +364,7 @@ button {
 			}
 		.notes .note {
 			border-bottom: 1px solid #feef9c;
-			margin: .25em 0;
-			padding: .25em;
+			padding: .5em .25em .25em;
 			box-sizing: border-box;
 			overflow: hidden;
 		}
@@ -374,7 +373,6 @@ button {
 			}
 			.notes .note-resolved {
 				background-color: #f8f8f8;
-				height: 1.9em;
 				color: #888;
 			}
 			.notes .resolved-note {
@@ -737,4 +735,4 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 	}
 	.uploadable-url-upload .button {
 		padding: .25em 1em;
-	}
+	

@@ -70,10 +70,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 		// Control sheet values
 		$rootScope.control = {};
 
-		// Links to answer sheet rows by question id
+		// Links to answer sheet rows by question id,
+		// or control sheet rows by value
 		$rootScope.links = {
 			responses: {},
-			notes: {},
 			control: {}
 		};
 
@@ -347,12 +347,20 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 							}
 						});
 
+						var promise;
+
 						if(links[qid]) {
-							pq[qid] = [ gs.updateRow(links[qid].edit, record, $rootScope.accessToken) ];
+							promise = gs.updateRow(links[qid].edit, record, $rootScope.accessToken);
 						}
 						else {
-							pq[qid] = [ gs.insertRow($rootScope.answerSheets.Answers, record, $rootScope.accessToken) ];
+							promise = gs.insertRow($rootScope.answerSheets.Answers, record, $rootScope.accessToken);
 						}
+
+						promise.then(function(row) {
+							links[qid] = row[':links'];
+						});
+
+						pq[qid].push(promise);
 					}
 					else if(section == 'notes') {
 						// Add created notes
@@ -367,7 +375,12 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 
 							var promise = gs.insertRow($rootScope.answerSheets.Notes, record, $rootScope.accessToken);
 
-							promise.then(function(row) { delete note.create; return row; });
+							promise.then(function(row) { 
+								note[':links'] = row[':links'];
+
+								delete note.create;
+								return row; 
+							});
 
 							pq[qid].push(promise);
 						});
@@ -396,14 +409,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 							promise.then(function(row) {
 								delete note.saveEdited; 
 								delete note.saveResolved; 
+
 								return row; 
 							});
 
 							pq[qid].push(promise);
 						});
 					}
-					
-					// TODO: Test Delete notes
+
 					_.each(_.filter(values, function(v) { return v.deleted; }), function(note) {
 						gs.deleteRow(note[':links'].edit, $rootScope.accessToken).then(function() {
 							$rootScope.notes[qid] = _.filter($rootScope.notes[qid], function(v) {
@@ -414,9 +427,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 
 					_.each(pq[qid], function(ppq) {
 						size++;
-						ppq.then(function(row) {
-							links[qid] = row[':links'];
-
+						ppq.then(function(row) {	
 							size--;
 
 							if(size == 0) {
@@ -583,10 +594,19 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 						$scope.editing.editing = false;
 					}
 
-					$scope.editing = $scope.notes[index];
+					var note = $scope.editing = $scope.notes[index];
 
-					$scope.notes[index].editValue = $scope.notes[index].note;
-					$scope.notes[index].editing = true;
+					note.editValue = $scope.notes[index].note;
+					note.editing = true;
+				}
+
+				$scope.update = function(index) {
+					var note = $scope.notes[index];
+
+					note.note = note.editValue; 
+					note.editing = false;
+					note.saveEdited = true;
+					note.edited = new Date().format();
 				}
 
 				$scope.$watch('editing', function(editing) {
@@ -597,6 +617,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 
 				$scope.resolve = function(index) {
 					$scope.notes[index].saveResolved = true;
+					$scope.notes[index].resolved = new Date().format();
 				}
 
 				$scope.delete = function(index) {
