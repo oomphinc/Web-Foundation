@@ -329,6 +329,9 @@ button {
 		height: 100%;
 	}
 	.open-notes.with-notes .icon-bubble {
+		color: #6c6;
+	}
+	.open-notes.with-unresolved-notes .icon-bubble {
 		color: #66c;
 	}
 	.notes {

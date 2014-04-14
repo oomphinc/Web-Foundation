@@ -102,7 +102,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 				});
 			}
 
-			// Truthy parameter is a sectionid, count notes in that sectoin
+			// Truthy parameter is a sectionid, count notes in that section
 			else {
 				_.each($rootScope.sections[sectionid].questions, function(question) {
 					_.each($rootScope.notes[question.questionid], function(note) {
@@ -551,9 +551,12 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 				$scope.question = $scope.$parent.question;
 
 				var refreshNotes = function() {
-					$scope.notes = _.filter( $rootScope.notes[$scope.question.questionid], function(note) { return note.field == $scope.field; });
-					$scope.count = _.reduce($scope.notes, function(memo, note) {
-						return memo + (!note.resolved ? 1 : 0);
+					$scope.notes = _.filter($rootScope.notes[$scope.question.questionid], function(note) { 
+						return note.field == $scope.field && !note.deleted; 
+					});
+
+					$scope.count = _.reduce($scope.notes, function(sum, note) {
+						return sum + ((!note.resolved && note.party != $rootScope.participant) ? 1 : 0);
 					}, 0);
 				}
 
