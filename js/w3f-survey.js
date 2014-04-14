@@ -123,37 +123,44 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 			'recruitment': {
 				party: '',
 				nextStates: [ 'assigned' ],
+				button: "Reset to Recruitment",
 				label: "Recruitment"
 			},
 			'assigned': {
 				party: 'Researcher',
 				nextStates: [ 'spotcheck' ],
-				label: "Research",
+				button: "Assign to Researcher",
+				label: "Initial Research"
 			},
 			'spotcheck': {
 				party: 'Coordinator',
-				nextStates: [ 'clarification', 'review' ],
-				label: "Spot-Check",
+				nextStates: [ 'clarification', 'review', 'validation', 'complete' ],
+				button: "Submit for Review",
+				label: "Spot-Check"
 			},
 			'clarification': {
 				party: 'Researcher',
 				nextStates: [ 'spotcheck' ],
+				button: "Send to Researcher",
 				label: "Clarification"
 			},
 			'review': {
 				party: 'Reviewer',
 				nextStates: [ 'spotcheck', 'validation' ],
+				button: "Send to Reviewer",
 				label: "Review"
 			},
 			'validation': {
 				party: 'Coordinator',
-				nextStates: [ 'review', 'clarification', 'complete' ],
-				label: "Validation",
+				nextStates: [ 'complete', 'review', 'clarification' ],
+				button: "Send to Validation",
+				label: "Validation"
 			},
 			'complete': {
 				party: '',
 				nextStates: [],
-				label: "Completion"
+				button: "Send to Completion",
+				label: "Complete"
 			}
 		};
 
@@ -217,6 +224,19 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 		$rootScope.complete = function(completing) {
 			if(typeof completing == "boolean") {
 				$rootScope.completing = completing;
+
+				if($rootScope.participant == 'Coordinator') {
+					$rootScope.nextStates = [ $rootScope.statusFlow[$rootScope.surveyStatus].nextStates[0] ];
+
+					_.each(_.keys($rootScope.statusFlow), function(key) {
+						if(key != $rootScope.nextStates[0] && key != $rootScope.surveyStatus) {
+							$rootScope.nextStates.push(key);
+						}
+					});
+				}
+				else {
+					$rootScope.nextStates = $rootScope.statusFlow[$rootScope.surveyStatus].nextStates;
+				}
 			}
 			else if(typeof completing == "string" && $rootScope.completing) {
 				var status = $rootScope.control['Status'];

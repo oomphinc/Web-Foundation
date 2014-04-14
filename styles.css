@@ -601,11 +601,25 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
  */
 #complete-popup {
 }
+	#complete-popup button {
+		font-size: 1em;
+	}
+	#complete-popup .complete-primary-actions {
+		float: left;
+		width: 100%;
+		clear: both;
+		margin-bottom: 1em;
+	}
 	#complete-popup .cancel-button {
 		float: left;
 	}
 	#complete-popup .complete-button {
 		float: right;
+	}
+	#complete-popup .secondary-button {
+		font-size: .8em;
+		float: right;
+		margin: .25em;
 	}
 /**
  * Angular fancy dropdown

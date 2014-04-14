@@ -88,9 +88,14 @@
 		There are {{ count }} unresolved notes. 
 	</p>
 
-	<button class="cancel-button" ng-click="complete(false)">Not yet, go back</button>
-
 	<div ng-if="statusFlow[surveyStatus] && (participant == 'Coordinator' || statusFlow[surveyStatus].party == participant)">
-		<button ng-repeat="nextState in statusFlow[surveyStatus].nextStates" class="complete-button" ng-click="complete(nextState)">Finished: Send to {{ statusFlow[nextState].label }}</button>
+		<div class="complete-primary-actions">
+			<button class="cancel-button" ng-click="complete(false)">Not yet, go back</button>
+			<button class="complete-button" ng-click="complete(nextStates[0])">{{ statusFlow[nextStates[0]].button }}</button>
+		</div>
+
+		<div ng-if="nextStates.length > 1">
+			<button ng-repeat="nextState in nextStates" class="secondary-button" ng-if="$index > 0" ng-click="complete(nextState)">{{ statusFlow[nextState].button }}</button>
+		</div>
 	</div>
 </modal>
