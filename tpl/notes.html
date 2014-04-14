@@ -1,4 +1,4 @@
-<div class="open-notes" title="{{ count }} unresolved comments out of {{ notes.length }} comments" ng-class="{ 'with-notes': count > 0 }" ng-click="$rootScope.$broadcast('close-notes'); opened=true;">
+<div class="open-notes" title="{{ count }} unresolved comments out of {{ notes.length }} comments" ng-class="{ 'with-notes': count > 0 }" ng-click="$rootScope.$broadcast('close-notes'); opened=!opened">
 	<span class="icon-bubble"></span> <span class="comment-count">{{ count }}</span>
 </div>
 
