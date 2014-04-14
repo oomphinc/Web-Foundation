@@ -11,7 +11,7 @@
 
 	<div class="question-title">
 		<h3>
-			{{ question.questionid }}: <em><label for="question-{{ question.questionid }}">{{ question.question }}</label></em>
+			{{ question.questionid.split('.').reverse()[0]}}: <em><label for="question-{{ question.questionid }}">{{ question.question }}</label></em>
 		</h3>
 	</div>
 
@@ -55,7 +55,7 @@
 		<label class="confidence-level">
 			<span>Confidence:</span>
 
-			<fancy-select ng-model="response.confidence" ng-options="val.toString() as val for val in [].range(11)" with-null="-" ng-disabled="readOnly || commentOnly" />
+			<fancy-select ng-model="response.confidence" ng-options="val.toString() as val for val in [ '0%', '25%', '50%', '75%', '95%', '100%' ]" with-null="-" ng-disabled="readOnly || commentOnly" />
 		</label>
 	</div>
 
