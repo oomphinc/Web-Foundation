@@ -32,7 +32,7 @@
 	</div>
 
 	<div ng-if="supporting && !supporting.values || supporting.values.indexOf(response.response) > -1" ng-repeat="supporting in question.supporting" class="supporting">
-		<notes ng-if="!anonymous" field="supporting" />
+		<notes ng-if="!anonymous" field="$parent.supporting.id" />
 
 		<label>
 			{{ supporting.content }}
