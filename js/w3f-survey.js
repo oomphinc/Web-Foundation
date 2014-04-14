@@ -197,10 +197,12 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 						}
 					}, true);
 				});
+
+				$rootScope.commentOnly = $rootScope.participant == 'Reviewer';
 			}, function(message) {
 				$rootScope.error = message;
 				$rootScope.loading = false;
-				$rootScope.readOnly = false;
+				$rootScope.readOnly = true;
 			});
 
 		})

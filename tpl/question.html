@@ -2,7 +2,7 @@
 	<div ng-if="question.type == 'Option'" class="response">
 		<notes ng-if="!anonymous" field="'response'" />
 
-		<fancy-select ng-options="item.weight.toString() as item.content for item in question.option" ng-model="response.response" class="answer-select option-select" id="question-{{ question.questionid }}" with-null="-" ng-disabled="readOnly" />
+		<fancy-select ng-options="item.weight.toString() as item.content for item in question.option" ng-model="response.response" class="answer-select option-select" id="question-{{ question.questionid }}" with-null="-" ng-disabled="readOnly || commentOnly" />
 	</div>
 
 	<div ng-if="question.type == 'Sum'" class="answer-sum" sum-question="question">
@@ -28,7 +28,7 @@
 
 		<p ng-if="question.justificationnote">{{ question.justificationnote }}</p>
 
-		<textarea ng-model="response.justification" ng-disabled="readOnly"></textarea>
+		<textarea ng-model="response.justification" ng-disabled="readOnly || commentOnly"></textarea>
 	</div>
 
 	<div ng-if="supporting && !supporting.values || supporting.values.indexOf(response.response) > -1" ng-repeat="supporting in question.supporting" class="supporting">
@@ -36,7 +36,7 @@
 
 		<label>
 			{{ supporting.content }}
-			<textarea ng-model="response[supporting.id]" ng-disabled="readOnly"></textarea>
+			<textarea ng-model="response[supporting.id]" ng-disabled="readOnly || commentOnly"></textarea>
 		</label>
 	</div>
 
@@ -46,7 +46,7 @@
 
 			<label>
 				Score:
-				<fancy-select ng-model="response.response" class="answer-select scale-select" id="question-{{ question.questionid }}" ng-options="val.toString() as val for val in [].range(11)" with-null="-" ng-disabled="readOnly" />
+				<fancy-select ng-model="response.response" class="answer-select scale-select" id="question-{{ question.questionid }}" ng-options="val.toString() as val for val in [].range(11)" with-null="-" ng-disabled="readOnly || commentOnly" />
 			</label>
 		</span>
 	</div>
@@ -55,7 +55,7 @@
 		<label class="confidence-level">
 			<span>Confidence:</span>
 
-			<fancy-select ng-model="response.confidence" ng-options="val.toString() as val for val in [].range(11)" with-null="-" ng-disabled="readOnly" />
+			<fancy-select ng-model="response.confidence" ng-options="val.toString() as val for val in [].range(11)" with-null="-" ng-disabled="readOnly || commentOnly" />
 		</label>
 	</div>
 
@@ -70,7 +70,7 @@
 		<label>
 			<span>Please cite example URLs</span>
 
-			<flexible-list collection="response.example" at-least="1" ng-disabled="readOnly" />
+			<flexible-list collection="response.example" at-least="1" ng-disabled="readOnly || commentOnly" />
 			<p class="description">Note: Any uploaded files will be saved on your Google Drive and will be publicly accessible.</p>
 		</label>
 	</div>
@@ -78,7 +78,7 @@
 	<div ng-if="question.hasprivatenotes == 'Yes'" class="private-notes">
 		<h4>Private notes: for reviewer / coordinator only.</h4>
 
-		<textarea ng-model="response.privateNotes" ng-disabled="readOnly"></textarea>
+		<textarea ng-model="response.privateNotes" ng-disabled="readOnly || commentOnly"></textarea>
 	</div>
 
 	<ng-include src="'tpl/question.html'" ng-repeat="question in question.subquestions"></ng-include>
