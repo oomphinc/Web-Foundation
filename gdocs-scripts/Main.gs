@@ -43,13 +43,36 @@ function getParticipants(country) {
     },
     researcher: {
       name: country.researcherName,
-      emails: country.researcherEmail.split(/\s*,\s*/)
+      emails: country.researcherEmail.split(/\s*,\s*/),
+      states: [ 'assigned', 'clarification' ]
     },
     reviewer: {
       name: country.reviewerName,
-      emails: country.reviewerEmail.split(/\s*,\s*/)
+      emails: country.reviewerEmail.split(/\s*,\s*/),
+      states: [ 'review' ]
     }
   };
+}
+
+/**
+ * Get the state object for a country
+ */
+function countryState(country) {
+  // Active Spread Sheet. Yeesh.
+  var ass = SpreadsheetApp.getActiveSpreadsheet(),
+      control = ass.getSheetByName('Control'),
+      states = loadStates(),
+      stateLabel = control.getRange("E" + country.row).getValue();
+
+  for(var state in states) {
+    if(states[state].label == stateLabel) {
+      return states[state];
+    }
+  }
+  
+  Logger.log("Couldn't find state for country " + country.name);
+  
+  return null;
 }
 
 /**
@@ -58,47 +81,9 @@ function getParticipants(country) {
 function setupAnswerSheet(country, sheet) {
   // Active Spread Sheet. Yeesh.
   var ass = SpreadsheetApp.getActiveSpreadsheet(),
-      control = ass.getSheetByName('Control');
-
-  ass.toast("Setting Answer sheet permissions...", country.name, -1);
-  
-  // Configure sharing. Make private, add editors, make DOMAIN-accessible.
-  var file = DriveApp.getFileById(sheet.getId());
-  
-  file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.EDIT);
-  
-  file.setShareableByEditors(false);
-  file.setDescription("Read-only answer sheet for " + country.name + ". Please do not access this sheet directly: instead, use the survey found at " + surveyUrl(sheet.getId()));
-  
-  var editors = sheet.getEditors();
-  
-  // Remove all editors, re-add reviewer and researcher
-  for(var i = 0; i < editors.length; i++) {
-    try {
-      sheet.removeEditor(editors[i]);
-    }
-    catch(e) {
-      Logger.log("Well, I tried to remove " + editors[i].getName() + "...");
-    }
-  }
-  
-  var participants = getParticipants(country);
-  
-  Logger.log("participants: " + JSON.stringify(participants));
-  
-  for(var role in participants) {
-    try {
-      sheet.addEditor(participants[role].emails[0]);
-    }
-    catch(e) {
-      ass.toast("Failed to add editor for role `" + role + "`: " + e);
-    }
-  }
-
-  file.setSharing(DriveApp.Access.DOMAIN, DriveApp.Permission.EDIT);
-  
-  // Set up Control sheet  
-  var answerControl = sheet.getSheetByName('Control');
+      control = ass.getSheetByName('Control'),
+      answerControl = sheet.getSheetByName('Control'),
+      participants = getParticipants(country);
 
   ass.toast("Updating control...", country.name, -1);
   
@@ -117,15 +102,9 @@ function setupAnswerSheet(country, sheet) {
   
   ass.toast("Setting Status in answer sheet...", country.name, -1);
 
-  var states = loadStates();
-  var stateLabel = control.getRange("E" + country.row).getValue();
-
-  for(var state in states) {
-    Logger.log("trying to compare " + stateLabel + " against " + states[state].label);
-    if(states[state].label == stateLabel) {
-      setValue(answerControl, 'Status', state);
-      break;
-    }
+  var state = countryState(country);  
+  if(state) {
+    setValue(answerControl, 'Status', state.state);
   }
 
   var due = control.getRange("J" + country.row).getValue();
@@ -133,7 +112,49 @@ function setupAnswerSheet(country, sheet) {
     ass.toast("Setting Statue Due date in answer sheet...", country.name, -1);
     setValue(answerControl, 'Status Due', due);
   }
-
+  
+  // Set the correct permissions for this sheet  
+  ass.toast("Setting Answer sheet permissions...", country.name, -1);
+  
+  // Configure sharing. Make private, add editors, make DOMAIN-accessible.
+  var file = DriveApp.getFileById(sheet.getId()),
+      editors = sheet.getEditors();
+  
+  file.setShareableByEditors(false);
+  file.setDescription("Read-only answer sheet for " + country.name + ". Please do not access this sheet directly: instead, use the survey found at " + surveyUrl(sheet.getId()));
+ 
+  // First set to "Private" (otherwise SpreadsheetApp.addEditor fails)
+  file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.EDIT);
+  
+  // Remove all editors
+  for(var i = 0; i < editors.length; i++) {
+    try {
+      sheet.removeEditor(editors[i]);
+    }
+    catch(e) {
+      Logger.log("Well, I tried to remove " + editors[i] + "...", e);
+    }
+  }
+  
+  // Re-add editors
+  for(var role in participants) {
+    // If the role has states defined, only don't share with that role if we're not
+    // in one of those states
+    if(participants[role].states && participants[role].states.indexOf(state.state) == -1) {
+      continue;
+    }
+    
+    try {
+      sheet.addEditor(participants[role].emails[0]);
+    }
+    catch(e) {
+      ass.toast("Failed to add editor for role `" + role + "`", e);
+    }
+  }
+  
+  // Re-set answer sheet to DOMAIN-accessible
+  file.setSharing(DriveApp.Access.DOMAIN, DriveApp.Permission.EDIT);
+  
   ass.toast('Done', country.name);
 }
 
@@ -179,11 +200,9 @@ function refreshAnswerSheet(country, newStatus) {
   else if(!states[answerStatus]) {
     ass.toast("Invalid status (" + answerStatus + ") found in answer control sheet. Resetting to " + country.currentStatus);
     
-    // Ugh, turn status label into a state slug to use in answer sheet
-    for(var state in states) {
-      if(states[state].label == country.currentStatus) {
-        setValue(answerControl, "Status", state);
-      }
+    var state = countryState(country);    
+    if(state) {
+      setValue(answerControl, "Status", state.state);
     }
   }
   
@@ -214,7 +233,7 @@ function refreshAnswerSheet(country, newStatus) {
       control.getRange(country.row, 10).setValue('');
     }
     
-    emailStateChange(country, statusChanged);
+    handleStateChange(country, statusChanged);
   }
   
   // Fill in a deadline on the answer sheet if not found and one appears in the Master Control sheet
@@ -363,12 +382,13 @@ function mailAlert(state, subs) {
     
     email[s] = body;
   });
-   
+
+  email.recipients = [ email.recipients, subs.coordinatorEmail ].join(',');
+  
   ass.toast("Sending email to " + email.recipients, subs.country, -1);
   
-  email = {
+  MailApp.sendEmail({
     to: email.recipients,
-    cc: subs.coordinatorEmail,
     subject: email.subject,
     name: "The Web Index Survey",
     replyTo: subs.coordinatorEmail,
@@ -384,16 +404,12 @@ function mailAlert(state, subs) {
 
       return false;
     }).filter(function(v) { return !!v; })
-  }
+  });
   
-  Logger.log("sending email: " + JSON.stringify(email));
-  
-  MailApp.sendEmail(email);
-   
-  ass.toast("Done " + email.recipients, subs.country);
+  ass.toast("Email sent to " + email.recipients, subs.country);
 }
 
-function emailStateChange(country, state) {
+function handleStateChange(country, state) {
   var ass = SpreadsheetApp.getActiveSpreadsheet(),
       control = ass.getSheetByName('Control'),
       states = loadStates(),
@@ -472,6 +488,7 @@ function emailStateChange(country, state) {
     }).join("\n---\n"));
   }
 
+  // Email and share
   switch(state) {
     case 'recruitment':
       addNote("Placed into recruitment mode");
@@ -610,4 +627,3 @@ function authorise() {
   DocsList.getFileById(handbook);
   DocsList.getFolderById(folderID);
 }
-
