@@ -32,12 +32,8 @@ function onOpen() {
       functionName: "createAnswerSheetHandler"
     },
     {
-      name: "Setup Answer Sheet",
-      functionName: 'setupAnswerSheetHandler'
-    },
-    {
-      name: "Refresh Sheets",
-      functionName: 'refreshSheetHandler'
+      name: "Synchronize Answer Sheet",
+      functionName: 'synchronizeAnswerSheetHandler'
     }
   ];
   
@@ -84,61 +80,28 @@ function createAnswerSheetHandler() {
     else {
       ass.toast("Creating answer sheet", country.name, -1);
 
+      var folderID = getConfig("folder");
+      var folder = DriveApp.getFolderById(folderID);
+
       var newSheet = ss.copy("WIS 2014 Answers - " + country.name);
 
       control.getRange("Q" + country.row).setValue(newSheet.getId());
 
-      var folderID = getConfig("folder");
-      var folder = DocsList.getFolderById(folderID);
-
-      newSheet.addToFolder(folder);
-
+      var file = DriveApp.getFileById(newSheet.getId());
+      
+      folder.addFile(file);
+      
       setupAnswerSheet(country, newSheet);
+      shareAnswerSheet(country, newSheet);
     }
   }
 }
 
 /**
- * Load all answer sheets
+ * Iterate over rows selected when "Synchronous Answer Sheet" command is invoked, Refresh
+ * sheet then set up
  */
-function refreshSheetHandler() {
-  var ass = SpreadsheetApp.getActiveSpreadsheet(),
-      range = ass.getActiveRange(),
-      control = ass.getSheetByName('Control');
-
-  if(range.getSheet().getSheetId() != control.getSheetId()) {
-    Browser.msgBox('Please select a range in the "Control" spreadsheet.');
-  } 
-
-  if(range.getRow() == 1) {
-    ass.toast("Can't operate on header row.");
-    return;
-  }
-
-  var countries = loadCountries();
-  
-  for(var i = range.getRow(); i <= range.getLastRow(); i++) {
-    var country = countries[i-2];
-    
-    if(country.name == '') {
-      ass.toast("There is no country for row " + country.row);
-      continue;
-    }    
-    
-    if(!country.answerSheet) {
-      ass.toast("There is no answer sheet for row!!!!!! " + country.row + "(" + i + ")", country.name);
-      continue;
-    }
-    
-    refreshAnswerSheet(country);
-  }
-}
-
-
-/**
- * Iterate over rows selected when "Setup Answer Sheet" command is invoked
- */
-function setupAnswerSheetHandler() {
+function synchronizeAnswerSheetHandler() {
   var ass = SpreadsheetApp.getActiveSpreadsheet(),
       range = ass.getActiveRange();
   
@@ -175,6 +138,7 @@ function setupAnswerSheetHandler() {
       return;
     }
   
+    refreshAnswerSheet(country);
     setupAnswerSheet(country, ss);
   }
   
@@ -251,3 +215,4 @@ function onUpdate(event) {
   // Refresh the answer sheet
   refreshAnswerSheet(country, state);
 }
+
