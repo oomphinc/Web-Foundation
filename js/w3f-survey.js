@@ -153,7 +153,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 			'spotcheck': {
 				party: 'Coordinator',
 				nextStates: [ 'clarification', 'review', 'validation', 'complete' ],
-				button: "Submit for Review",
+				button: "Send to the next stage",
 				label: "Spot-Check"
 			},
 			'clarification': {
@@ -171,7 +171,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 			'validation': {
 				party: 'Coordinator',
 				nextStates: [ 'complete', 'review', 'clarification' ],
-				button: "Send to Validation",
+				button: "It's done",
 				label: "Validation"
 			},
 			'complete': {
