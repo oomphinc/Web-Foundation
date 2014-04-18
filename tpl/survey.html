@@ -64,7 +64,7 @@
 		<ul>
 			<li ng-repeat="sectionid in sectionOrder" ng-class="{ active: activeSection == sectionid }">
 				<a ng-click="navigate(sectionid)">
-					<span ng-if="noteCount[sectionid]" class="note-count">
+					<span ng-if="noteCount[sectionid]" class="note-count" ng-click="navigate(sectionid, true)">
 						<span class="icon-bubble"></span> <span class="comment-count">{{ noteCount[sectionid] }}</span>
 					</span>
 

@@ -99,41 +99,72 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 		$rootScope.activeSection = $cookies.section;
 
 		// Navigate to a different section
-		$rootScope.navigate = function(section) {
-			$rootScope.activeSection = $cookies.section = section;
-			window.scrollTo(0,0);
+		$rootScope.navigate = function(section, nextNote) {
+			if(section != $rootScope.activeSection) {
+				$rootScope.activeSection = $cookies.section = section;
+				window.scrollTo(0,0);
+				window.location.hash = '';
+			}
+
+			if(nextNote) {
+				var st = window.scrollY, $skipTo, $firstNote;
+
+				_.each($rootScope.notes, function(notes, questionid) {
+					var question = $rootScope.questions[questionid];
+
+					if(question.sectionid != section) {
+						return;
+					}
+
+					for(var i in notes) {
+						if(notes.hasOwnProperty(i) && !notes[i].resolved) {
+							var $el = $('#note-' + question.qid + '-' + notes[i].field);
+
+							if(!$el.length) {
+								continue;
+							}
+
+							if(!$firstNote) {
+								$firstNote = $el;
+							}
+
+							if(pos && st < $el.offset().top) {
+								$skipTo = $el;
+							}
+						}
+					}
+				});
+
+				if($firstNote && !$skipTo) {
+					$skipTo = $firstNote;
+				}
+
+				if($skipTo) {
+					window.scrollTo(0, $skipTo.offset().top - 60);
+				}
+			}
 		}
 		
 		// Count unresolved notes in a particular section, or if coordinator,
 		// count ALL unresolved notes
 		$rootScope.countNotes = function(sectionid) {
-			var count = 0;
+			var sections = sectionid ? [ sectionid ] : $rootScope.sectionOrder;
 
-			// Falsey parameter, just count all unresolved notes
-			if(!sectionid) {
-				_.each($rootScope.notes, function(notes, questionid) {
-					_.each(notes, function(note) {
-						if(!note.resolved && ($rootScope.participant == 'Coordinator' || note.party != $rootScope.participant)) {
-							count++;
-						}
-					});
-				});
-			}
+			_.each(sections, function(sectionid) {
+				var count = 0;
 
-			// Truthy parameter is a sectionid, count notes in that section
-			else {
 				_.each($rootScope.sections[sectionid].questions, function(question) {
-					_.each($rootScope.notes[question.questionid], function(note) {
-						if(!note.resolved && ($rootScope.participant == 'Coordinator' || note.party != $rootScope.participant)) {
+					var notes = $rootScope.notes[question.questionid];
+					for(var i in notes) {
+						if(notes.hasOwnProperty(i) && !notes[i].resolved) {
 							count++;
+							return;
 						}
-					});
+					}
 				});
 
 				$rootScope.noteCount[sectionid] = count;
-			}
-
-			return count;
+			});
 		}
 
 		// Potential status flow
@@ -591,13 +622,26 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 				$scope.question = $scope.$parent.question;
 
 				var refreshNotes = function() {
-					$scope.notes = _.filter($rootScope.notes[$scope.question.questionid], function(note) { 
-						return note.field == $scope.field && !note.deleted; 
-					});
+					$scope.notes = [];
+					$scope.threads = {};
+					$scope.threadOrder = [];
+					var resolved = '';
 
-					$scope.count = _.reduce($scope.notes, function(sum, note) {
-						return sum + ((!note.resolved && note.party != $rootScope.participant) ? 1 : 0);
-					}, 0);
+					_.chain($rootScope.notes[$scope.question.questionid])
+						.where({ field: $scope.field })
+						.each(function(note) {
+							if(note.resolved) {
+								if($scope.threadOrder.indexOf(note.resolved)) {
+									$scope.threadOrder.push(note.resolved);
+									$scope.threads[note.resolved] = [];
+								}
+
+								$scope.threads[note.resolved].push(note);
+							}
+							else {
+								$scope.notes.push(note);
+							}
+						});
 				}
 
 				refreshNotes();
@@ -658,9 +702,13 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 					}
 				});
 
-				$scope.resolve = function(index) {
-					$scope.notes[index].saveResolved = true;
-					$scope.notes[index].resolved = new Date().format();
+				$scope.resolve = function(notes) {
+					var timestamp = new Date().format();
+
+					_.each(notes, function(note) {
+						note.saveResolved = true;
+						note.resolved = timestamp;
+					});
 				}
 
 				$scope.delete = function(index) {
