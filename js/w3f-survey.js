@@ -102,7 +102,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 		$rootScope.navigate = function(section, nextNote) {
 			if(section != $rootScope.activeSection) {
 				$rootScope.activeSection = $cookies.section = section;
-				window.scrollTo(0,0);
+				window.scroll(0,0);
 				window.location.hash = '';
 			}
 
@@ -128,8 +128,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 								$firstNote = $el;
 							}
 
-							if(pos && st < $el.offset().top) {
+							if(!$skipTo && st < parseInt($el.offset().top) - 60) {
 								$skipTo = $el;
+								return;
 							}
 						}
 					}
@@ -140,7 +141,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 				}
 
 				if($skipTo) {
-					window.scrollTo(0, $skipTo.offset().top - 60);
+					window.scroll(0, $skipTo.offset().top - 60);
 				}
 			}
 		}
@@ -631,7 +632,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 						.where({ field: $scope.field })
 						.each(function(note) {
 							if(note.resolved) {
-								if($scope.threadOrder.indexOf(note.resolved)) {
+								if($scope.threadOrder.indexOf(note.resolved) === -1) {
 									$scope.threadOrder.push(note.resolved);
 									$scope.threads[note.resolved] = [];
 								}

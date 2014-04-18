@@ -11,6 +11,7 @@
 	<div class="note-list">
 		<div class="thread" ng-repeat="threadDate in threadOrder">
 			<ng-include src="'tpl/note.html'" ng-repeat="note in threads[threadDate]"></ng-include>
+			<a class="resolved-note" title="Click to expand">Resolved {{ threadDate }}</a>
 		</div>
 
 		<ng-include src="'tpl/note.html'" ng-repeat="note in notes"></ng-include>
