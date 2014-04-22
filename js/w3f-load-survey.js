@@ -352,7 +352,7 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 						deferred.reject("Unable to load response data.");
 					});
 				}, function() {
-					deferred.reject("There was a problem loading the survey.");
+					deferred.reject("There was a problem loading the survey. This may be because the survey is not currently shared with you, or you are logged in with the wrong Google Account. Please try using a new Incognito Browser Window, or logging out from all google accounts on this machine before refreshing this link.");
 				});
 
 			}
