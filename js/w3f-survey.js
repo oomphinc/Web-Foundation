@@ -51,6 +51,22 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 	// Create "markdown" filter
 	.filter('markdown', function( $rootScope ) {
 		return function(input) {
+			var linkRegex = /(.{1,2})?\b(https?\:\/\/[^,\s|\[\]\(\)]+)/g,
+				matches,
+				markdownLink;
+
+			// Replace links with their markdown equivalent. Don't do this for
+			// already marked-down or auto-linked links.
+			while(matches = linkRegex.exec(input)) {
+				if(matches[1] == '](' || matches[1].substr(-1) == '<') {
+					continue;
+				}
+
+				var markdownLink = '[' + matches[2] + '](' + matches[2] + ')';
+				input = input.replace(matches[2], markdownLink);
+				linkRegex.lastIndex += markdownLink.length - matches[2].length;
+			}
+
 			return markdown.toHTML(input);
 		}
 	})
