@@ -18,7 +18,7 @@
  */
 var MASTER_KEY = '0ApqzJROt-jZ0dGNoZFFtMnB3dVctNWxyc295dENFWHc';
 var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
-var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/userinfo.email';
+var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file';
 
 // Gimme a range op!
 Array.prototype.range = function(n) {
@@ -161,7 +161,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 				}
 			}
 		}
-		
+
 		// Count unresolved notes in a particular section, or if coordinator,
 		// count ALL unresolved notes
 		$rootScope.countNotes = function(sectionid) {
@@ -235,7 +235,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 			responses: {},
 			notes: {}
 		};
-		
+
 		// Load the survey once we're ready.
 		$rootScope.$on('load-survey', function() {
 			loader.load(answerKey).then(function(status) {
@@ -252,7 +252,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 				// Watch responses to add any changes to the save queue
 				//
 				// BUG: oldValue and newValue are the same in this call from $watchCollection -
-				// See: https://github.com/angular/angular.js/issues/2621. 
+				// See: https://github.com/angular/angular.js/issues/2621.
 				_.each(_.keys($rootScope.questions), function(qid) {
 					$rootScope.$watch("responses['" + qid + "']", function(oldValue, newValue) {
 						if(oldValue !== newValue) {
@@ -331,7 +331,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 					.then(function() {
 						$rootScope.status = {
 							message: "Submitted. Please return again!",
-							readOnly: "This survey is now read-only. Please return again.", 
+							readOnly: "This survey is now read-only. Please return again.",
 							success: true
 						}
 					});
@@ -360,8 +360,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 		});
 
 		//
-		// Manage updating the answer sheet 
-		// 
+		// Manage updating the answer sheet
+		//
 
 		// Keep timers for processes here, cancelling pending changes to an update process
 		// when newer changes have occured
@@ -463,11 +463,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 
 							var promise = gs.insertRow($rootScope.answerSheets.Notes, record, $rootScope.accessToken);
 
-							promise.then(function(row) { 
+							promise.then(function(row) {
 								note[':links'] = row[':links'];
 
 								delete note.create;
-								return row; 
+								return row;
 							});
 
 							pq[qid].push(promise);
@@ -495,10 +495,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 							var promise = gs.updateRow(note[':links'].edit, record, $rootScope.accessToken);
 
 							promise.then(function(row) {
-								delete note.saveEdited; 
-								delete note.saveResolved; 
+								delete note.saveEdited;
+								delete note.saveResolved;
 
-								return row; 
+								return row;
 							});
 
 							pq[qid].push(promise);
@@ -515,7 +515,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 
 					_.each(pq[qid], function(ppq) {
 						size++;
-						ppq.then(function(row) {	
+						ppq.then(function(row) {
 							size--;
 
 							if(size == 0) {
@@ -528,7 +528,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 						}, function(message) {
 							$rootScope.status = {
 								error: true,
-								message: "Failed to save changes" 
+								message: "Failed to save changes"
 							};
 						});
 					});
@@ -570,7 +570,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 			link: function($scope, element, attrs) {
 				$scope.$on('response-updated', function() {
 					$scope.sectionAnswers = [];
-					$scope.sectionQuestions = _.filter($scope.questions, function(q) { 
+					$scope.sectionQuestions = _.filter($scope.questions, function(q) {
 						if(q.sectionid == $scope.sectionid) {
 							if($scope.responses[q.questionid].response != undefined && $scope.responses[q.questionid].response != '') {
 								$scope.sectionAnswers.push($scope.responses[q.questionid]);
@@ -586,7 +586,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 		}
 	} ])
 
-	// Fade out an element based on 'clear' property of argument 
+	// Fade out an element based on 'clear' property of argument
 	.directive('fadeOn', [ '$timeout', function($timeout) {
 		return {
 			link: function($scope, element, attrs) {
@@ -664,7 +664,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 				refreshNotes();
 
 				$rootScope.$watch('notes["' + $scope.question.questionid + '"]', refreshNotes, true);
-				
+
 				$scope.addNote = function() {
 					if(!$scope.newNote || $scope.newNote.match(/^\s*$/)) {
 						return;
@@ -707,7 +707,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 				$scope.update = function(index) {
 					var note = $scope.notes[index];
 
-					note.note = note.editValue; 
+					note.note = note.editValue;
 					note.editing = false;
 					note.saveEdited = true;
 					note.edited = new Date().format();
@@ -755,7 +755,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 		return {
 			link: function($scope, element, attrs) {
 				var question = $scope.$eval(attrs.sumQuestion);
-				
+
 				// Update response when any child value changes
 				var update = function() {
 					function computeSum(questions) {
@@ -954,7 +954,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 				}
 
 				var disabled = attrs.ngDisabled;
-					
+
 				return function($scope, element, attrs, transclude) {
 					var $select = element.find('select');
 					var $options = element.find('.fancy-select-options');
@@ -1112,7 +1112,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 				immediate: true
 			}, authenticated);
 		}
-		
+
 		// Render the sign-in button
 		gapi.signin.render(document.getElementById('signin-button'), {
 			clientid: CLIENT_ID,
