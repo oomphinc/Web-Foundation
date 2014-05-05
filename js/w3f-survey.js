@@ -196,49 +196,49 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 				nextStates: [ 'assigned' ],
 				button: "Reset to Recruitment",
 				label: "Recruitment",
-				transitionMessage: "Move to Recruitment Status"
+				transitionMessage: "This completes the Recruitment phase of the survey"
 			},
 			'assigned': {
 				party: 'Researcher',
 				nextStates: [ 'spotcheck' ],
 				button: "Assign to Researcher",
 				label: "Initial Research",
-				transitionMessage: "Move to Spotcheck"
+				transitionMessage: "This completes the Initial Research phase of the survey"
 			},
 			'spotcheck': {
 				party: 'Coordinator',
 				nextStates: [ 'clarification', 'review', 'validation', 'complete' ],
 				button: "Send to the next stage",
 				label: "Spot-Check",
-				transitionMessage: "Move to Recruitment Status5"
+				transitionMessage: "This completes the Spot-check phase of the survey"
 			},
 			'clarification': {
 				party: 'Researcher',
 				nextStates: [ 'spotcheck' ],
 				button: "Send to Researcher",
 				label: "Clarification",
-				transitionMessage: "Move to Recruitment Status4"
+				transitionMessage: "This completes the Clarification phase of the survey"
 			},
 			'review': {
 				party: 'Reviewer',
 				nextStates: [ 'spotcheck', 'validation' ],
 				button: "Send to Reviewer",
 				label: "Review",
-				transitionMessage: "Move to Recruitment Status3"
+				transitionMessage: "This completes the Review phase of the survey"
 			},
 			'validation': {
 				party: 'Coordinator',
 				nextStates: [ 'complete', 'review', 'clarification' ],
 				button: "It's done",
 				label: "Validation",
-				transitionMessage: "Move to Recruitment Status2"
+				transitionMessage: "This completes the Validation phase of the survey"
 			},
 			'complete': {
 				party: '',
 				nextStates: [],
 				button: "Send to Completion",
 				label: "Complete",
-				transitionMessage: "Move to Recruitment Status1"
+				transitionMessage: "The survey is complete and ready for final submission"
 			}
 		};
 
