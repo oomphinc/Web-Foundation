@@ -184,11 +184,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 			});
 		}
 
-		// Open a link in a new window
-		$rootScope.w3fNewWindow = function(href) {
-			windowObject = window.open(href, "w3f-help", "resizable,scrollbars,status");
-		}
-
 		// Potential status flow
 		$rootScope.statusFlow = {
 			'recruitment': {
