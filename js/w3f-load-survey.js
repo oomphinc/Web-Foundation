@@ -1,5 +1,5 @@
 /**
- * W3F Web Index Survey - Survey Data Loader 
+ * W3F Web Index Survey - Survey Data Loader
  *
  * Copyright (C) 2014  Ben Doherty @ Oomph, Inc.
  *
@@ -38,7 +38,7 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 				});
 
 				// Ensure all required fields are defined:
-				var requiredFields = [ 'Coordinator Email', 'Researcher', 'Status' ]; 
+				var requiredFields = [ 'Coordinator Email', 'Researcher', 'Status' ];
 				var missingFields = _.filter(requiredFields, function(field) {
 					return typeof $rootScope.control[field] == 'undefined';
 				});
@@ -184,11 +184,15 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 						loadAnswerData(q);
 					}, q.reject);
 				}, q.reject);
+			}, function(test) {
+				$rootScope.loading = false;
+				$rootScope.error = "Couldn't load spreadsheet, check that keys are valid";
+				return;
 			});
 
 			return q.promise;
 		}
-		
+
 		// Load answer sheet once questions have been loaded
 		var loadAnswerData = function(deferred) {
 			var loadError = function(message) {
@@ -216,7 +220,7 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 
 						$rootScope.links.responses[answer.questionid] = answer[':links'];
 
-						var response = $rootScope.responses[answer.questionid]; 
+						var response = $rootScope.responses[answer.questionid];
 
 						// Copy all response properties from sheet into row
 						for(var col in answer) {
@@ -280,7 +284,7 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 							return;
 						}
 
-						$rootScope.notes[note.questionid].push(note);	
+						$rootScope.notes[note.questionid].push(note);
 					});
 
 					_.each($rootScope.sectionOrder, function(sectionid) {

@@ -33,7 +33,7 @@ Date.prototype.format = function() {
 angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies', 'ngRoute', 'ngSanitize' ])
 	// Setup route. There's only one route, and it's /<answerSheetKey>
 	.config([ '$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
-		$routeProvider.when('/:answerKey?', {
+		$routeProvider.when('/:answerKey?/:masterKey?', {
 			controller: 'W3FSurveyController',
 			templateUrl: 'tpl/survey.html'
 		});
@@ -74,6 +74,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 	// Top-level controller
 	.controller('W3FSurveyController', [ 'loader', 'spreadsheets', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', function(loader, gs, $scope, $rootScope, $q, $cookies, $routeParams, $interval) {
 		var answerKey = $routeParams.answerKey;
+
+		if ( $routeParams.masterKey ) {
+			window.MASTER_KEY = $routeParams.masterKey;
+		}
 
 		// Who's doing the Survey? Determined by answer sheet, defaults to "Anonymous"
 		$rootScope.participant = 'Anonymous';
