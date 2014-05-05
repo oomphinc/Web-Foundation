@@ -28,7 +28,7 @@
 	</p>
 
 	<p ng-if="status.readOnly">{{ status.readOnly }}</p>
-		
+
 </div>
 
 <div class="ng-hide" ng-show="!loading" ng-cloak>
@@ -48,9 +48,9 @@
 					<p ng-if="participant == 'Coordinator'">You are the survey coordinator and can update responses or comments in this survey at any time.</p>
 
 					<p ng-if="statusFlow[surveyStatus]">This survey is currently in the <strong>{{ statusFlow[surveyStatus].label }}</strong> state.</p>
-					
+
 					<p ng-if="statusFlow[surveyStatus].party == participant">You are the current assignee of the survey.</p>
-					
+
 					<p ng-if="readOnly">This survey is currently <strong>read-only</strong> to you. You will be notified when the survey is assigned to you.</p>
 
 					<p ng-if="control['Status Due']">
@@ -100,10 +100,11 @@
 <modal id="complete-popup" model="completing" cancel="complete(false)">
 	<h2>All Done?</h2>
 
+	<p>{{ statusFlow[surveyStatus].transitionMessage }}</p>
 	<p>Please confirm that you are finished completing this survey and are satisfied with your answers.</p>
-	
+
 	<p ng-if="count = countNotes()">
-		There are {{ count }} unresolved notes. 
+		There are {{ count }} unresolved notes.
 	</p>
 
 	<div ng-if="statusFlow[surveyStatus] && (participant == 'Coordinator' || statusFlow[surveyStatus].party == participant)">

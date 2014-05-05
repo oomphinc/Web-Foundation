@@ -241,6 +241,12 @@ button {
 		clear: both;
 	}
 
+	.question .helplink a {
+		cursor: pointer;
+		text-decoration: underline;
+		color: #00e;
+	}
+
 	.question-Scale .scale-response,
 	.question-Scale .confidence {
 		margin-top: .5em;

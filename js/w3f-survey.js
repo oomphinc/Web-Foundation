@@ -184,49 +184,61 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 			});
 		}
 
+		// Open a link in a new window
+		$rootScope.w3fNewWindow = function(href) {
+			windowObject = window.open(href, "w3f-help", "resizable,scrollbars,status");
+		}
+
 		// Potential status flow
 		$rootScope.statusFlow = {
 			'recruitment': {
 				party: '',
 				nextStates: [ 'assigned' ],
 				button: "Reset to Recruitment",
-				label: "Recruitment"
+				label: "Recruitment",
+				transitionMessage: "Move to Recruitment Status"
 			},
 			'assigned': {
 				party: 'Researcher',
 				nextStates: [ 'spotcheck' ],
 				button: "Assign to Researcher",
-				label: "Initial Research"
+				label: "Initial Research",
+				transitionMessage: "Move to Spotcheck"
 			},
 			'spotcheck': {
 				party: 'Coordinator',
 				nextStates: [ 'clarification', 'review', 'validation', 'complete' ],
 				button: "Send to the next stage",
-				label: "Spot-Check"
+				label: "Spot-Check",
+				transitionMessage: "Move to Recruitment Status5"
 			},
 			'clarification': {
 				party: 'Researcher',
 				nextStates: [ 'spotcheck' ],
 				button: "Send to Researcher",
-				label: "Clarification"
+				label: "Clarification",
+				transitionMessage: "Move to Recruitment Status4"
 			},
 			'review': {
 				party: 'Reviewer',
 				nextStates: [ 'spotcheck', 'validation' ],
 				button: "Send to Reviewer",
-				label: "Review"
+				label: "Review",
+				transitionMessage: "Move to Recruitment Status3"
 			},
 			'validation': {
 				party: 'Coordinator',
 				nextStates: [ 'complete', 'review', 'clarification' ],
 				button: "It's done",
-				label: "Validation"
+				label: "Validation",
+				transitionMessage: "Move to Recruitment Status2"
 			},
 			'complete': {
 				party: '',
 				nextStates: [],
 				button: "Send to Completion",
-				label: "Complete"
+				label: "Complete",
+				transitionMessage: "Move to Recruitment Status1"
 			}
 		};
 
