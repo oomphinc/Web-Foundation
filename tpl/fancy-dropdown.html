@@ -1,0 +1,12 @@
+<div class="fancy-select">
+	<select></select>
+
+	<div class="fancy-select-dropdown" ng-class="{ 'fancy-select-open': opened }">
+		<label class="fancy-select-selected" ng-class="{ 'fancy-select-disabled': disabled }" ng-click="!disabled && (opened=!opened)">{{ items[selectedIndex] }}</label>
+
+		<ul class="fancy-select-options ng-hide" ng-show="opened">
+			<li class="fancy-select-option" ng-repeat="item in items" ng-click="select($index)">{{ item }}</li>
+		</ul>
+	</div>
+</div>
+

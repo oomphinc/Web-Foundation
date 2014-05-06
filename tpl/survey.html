@@ -1,0 +1,119 @@
+<!--
+ * W3F Web Index Survey - Survey AngularJS template
+ *
+ * Copyright (C) 2014  Ben Doherty @ Oomph, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<div id="loading" ng-show="loading">
+	<h3>{{ loading }}</h3>
+</div>
+
+<div id="status" fade-on="status" ng-class="{ 'status-error': status.error }">
+	<p ng-if="status.saving"><ng-pluralize count="status.saving" when="{ 'one': 'Saving...', 'other': 'Saving {} changes...' }"></ng-pluralize></p>
+
+	<p ng-if="status.message">
+		<span ng-if="status.success" class="icon-checkmark"></span> {{ status.message }}
+	</p>
+
+	<p ng-if="status.readOnly">{{ status.readOnly }}</p>
+		
+</div>
+
+<div class="ng-hide" ng-show="!loading" ng-cloak>
+	<nav id="sections">
+		<div id="user-role-container">
+			<span class="user-role">
+				<span class="icon-user"></span>
+				{{ anonymous ? "Anonymous" : participant }}
+			</span>
+
+			<div class="user-role-popup" ng-if="!anonymous">
+				<div class="user-role-popup-content">
+					<p>Logged in as <strong><span class="user-email">{{ userEmail }}</span>.</strong></p>
+
+					<p ng-if="participant != 'Coordinator'">You are completing this survey for <strong>{{ country }}</strong>, and your survey coordinator is <a href="mailto:{{ control['Coordinator Email'] }}">{{ control['Coordinator Name'] }}</a></p>
+
+					<p ng-if="participant == 'Coordinator'">You are the survey coordinator and can update responses or comments in this survey at any time.</p>
+
+					<p ng-if="statusFlow[surveyStatus]">This survey is currently in the <strong>{{ statusFlow[surveyStatus].label }}</strong> state.</p>
+					
+					<p ng-if="statusFlow[surveyStatus].party == participant">You are the current assignee of the survey.</p>
+					
+					<p ng-if="readOnly">This survey is currently <strong>read-only</strong> to you. You will be notified when the survey is assigned to you.</p>
+
+					<p ng-if="control['Status Due']">
+						This phase of the survey must be completed by <strong>{{ control['Status Due'] }}.</strong>
+					</p>
+
+				</div>
+			</div>
+		</div>
+
+		<ul>
+			<li ng-repeat="sectionid in sectionOrder" ng-class="{ active: activeSection == sectionid }">
+				<a ng-click="navigate(sectionid)">
+					<span ng-if="noteCount[sectionid]" class="note-count" ng-click="navigate(sectionid, true)">
+						<span class="icon-bubble"></span> <span class="comment-count">{{ noteCount[sectionid] }}</span>
+					</span>
+
+					{{ sections[sectionid].section }}
+				</a>
+			</li>
+
+			<li ng-if="surveyStatus != 'complete' && !anonymous && !readOnly" ng-click="complete(true)" class="button complete-button">
+				Complete Survey
+			</li>
+		</ul>
+
+	</nav>
+
+	<section ng-repeat="sectionid in sectionOrder" ng-init="section=sections[sectionid]" class="section" class="ng-hide" ng-if="sectionid == activeSection">
+		<h2>{{ section.title | country }}</h2>
+
+		<div class="section-description" ng-bind-html="section.description | markdown"></div>
+
+		<div ng-repeat="question in section.questions">
+			<ng-include src="'tpl/question.html'"></ng-include>
+		</div>
+
+		<nav class="paging">
+			<button class="previous-button" ng-if="$index > 0" ng-click="navigate(sectionOrder[$index-1])">&laquo; Previous: {{ sections[sectionOrder[$index-1]].section }}</button>
+			<button class="next-button" ng-if="$index < sectionOrder.length-1" ng-click="navigate(sectionOrder[$index+1])">Next: {{ sections[sectionOrder[$index+1]].section }} &raquo;</button>
+
+			<button class="complete-button" ng-if="surveyStatus != 'complete' && !readOnly && statusFlow[surveyStatus] && (participant == 'Coordinator' || statusFlow[surveyStatus].party == participant) && $index == sectionOrder.length-1" ng-click="complete(true)">Complete Survey</button>
+		</nav>
+	</section>
+</div>
+
+<modal id="complete-popup" model="completing" cancel="complete(false)">
+	<h2>All Done?</h2>
+
+	<p>Please confirm that you are finished completing this survey and are satisfied with your answers.</p>
+	
+	<p ng-if="count = countNotes()">
+		There are {{ count }} unresolved notes. 
+	</p>
+
+	<div ng-if="statusFlow[surveyStatus] && (participant == 'Coordinator' || statusFlow[surveyStatus].party == participant)">
+		<div class="complete-primary-actions">
+			<button class="cancel-button" ng-click="complete(false)">Not yet, go back</button>
+			<button class="complete-button" ng-click="complete(nextStates[0])">{{ statusFlow[nextStates[0]].button }}</button>
+		</div>
+
+		<div ng-if="nextStates.length > 1">
+			<button ng-repeat="nextState in nextStates" class="secondary-button" ng-if="$index > 0" ng-click="complete(nextState)">{{ statusFlow[nextState].button }}</button>
+		</div>
+	</div>
+</modal>

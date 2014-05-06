@@ -1,0 +1,13 @@
+<ul class="flexible-list">
+	<li ng-repeat="item in list track by $index" class="flexible-list-item">
+		<a class="icon-close flexible-list-delete" ng-if="!disabled" ng-click="list.splice($index, 1)"></a>
+
+		<div class="flexible-list-content">
+			<uploadable-url model="list[$index]" placeholder="'Example ' + ($index + 1) + ' Title'" ng-disabled="disabled" />
+		</div>
+	</li>
+
+	<li class="flexible-list-item">
+		<a ng-click="add()" class="flexible-list-add" ng-if="!disabled"><span class="icon-plus"></span> add</a>
+	</li>
+</ul>

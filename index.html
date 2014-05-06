@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!--
+ * W3F Web Index Survey - Main AngularJS template
+ *
+ * Copyright (C) 2014  Ben Doherty @ Oomph, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<html ng-app="W3FWIS">
+	<head>
+		<base href="/" />
+		<title>World Wide Web Foundation Web Index Survey 2014{{ country ? ' - ' + country : ''}}</title>
+
+		<script src="js/jquery-1.11.0.min.js"></script>
+		<script src="js/underscore-min.js"></script>
+		<script src="js/markdown.js"></script>
+		<script src="js/md5.js"></script>
+		<script src="js/angular.min.js"></script>
+		<script src="js/angular-cookies.min.js"></script>
+		<script src="js/angular-route.min.js"></script>
+		<script src="js/angular-sanitize.min.js"></script>
+		<script src="js/w3f-angular-spreadsheets.js"></script>
+		<script src="js/w3f-load-survey.js"></script>
+		<script src="js/w3f-survey.js"></script>
+		<script src="https://apis.google.com/js/client:plusone.js?onload=gapi_loaded"></script>
+
+		<link rel="stylesheet" href="styles.css" />
+		<link rel="stylesheet" href="icons.css" />
+	</head>
+
+  <body ng-click="popup=false">
+		<ul class="wis-progress">
+			<li ng-repeat="sectionid in sectionOrder" ng-style="{ width: (100 / sectionOrder.length) + '%' }" update-on-response>
+				<a ng-click="navigate(sectionid)">
+					<strong>{{ sectionid }}</strong>
+					<span class="progress" ng-if="sectionQuestions.length > 0">{{ sectionAnswers.length }}/{{ sectionQuestions.length }}</span>
+					<span class="progress-bar-container">
+						<span class="progress-bar" ng-style="{ width: sectionQuestions.length ? sectionAnswers.length / sectionQuestions.length * 100 + '%' : '100%', backgroundColor: (sectionQuestions.length > 0 ? (sectionQuestions.length == sectionAnswers.length ? '#8f8' : '#ff8') : '#eef') }"></span>
+					</span>
+				</a>
+			</li>
+		</ul>
+
+		<div id="wrapper" with-rail>
+			<header class="branding">
+				<h1>World Wide Web Foundation</h1>
+				<h2>Web Index Survey - 2014{{ country ? ' - ' + country : '' }}</h2>
+			</header>
+
+			<div ng-if="error">{{ error }}</div>
+
+			<div id="sign-in" ng-show="showSignin && !error" ng-class="ng-hide">
+				<p>Welcome to the Web Index Survey 2014. Sign in with your Google account to participate.</p>
+
+				<p><strong>VERY IMPORTANT NOTE:</strong> If you are accessing this survey on
+				a shared computer, please be sure to access this survey in
+				<strong>Incognito Mode</strong> and close the browser window when you
+				are finished.</p>
+
+				<span style="display: none" id="signin-button"></span>
+			</div>
+
+			<div id="survey" ng-if="!error" ng-view></div>
+		</div>
+
+		<script src="js/chrome-only.js"></script>
+	</body>
+</html>
