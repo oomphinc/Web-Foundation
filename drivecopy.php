@@ -22,6 +22,7 @@
   Make an API request authenticated with a service
   account.
  ************************************************/
+set_include_path ( __DIR__ );
 require_once 'Google/Client.php';
 require_once 'Google/Service/Drive.php';
 require_once 'config.php';
