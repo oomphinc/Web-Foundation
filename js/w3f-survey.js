@@ -914,7 +914,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 											$scope.model.url = data.alternateLink;
 											$scope.model.title  = data.title;
 										}
-										console.log(data);
 									})
 									.error(function(data, status, headers, config){
 										$scope.uploadState = "Upload Failed! " + data.error;
