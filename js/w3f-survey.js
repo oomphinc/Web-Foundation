@@ -18,6 +18,7 @@
  */
 var MASTER_KEY = '0ApqzJROt-jZ0dGNoZFFtMnB3dVctNWxyc295dENFWHc';
 var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
+var SERVICE_ACCOUNT = '397381159562-6qdpfe2af1mp8acvf2rps74ksudesi45@developer.gserviceaccount.com'
 var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file';
 
 // Gimme a range op!
@@ -30,7 +31,7 @@ Date.prototype.format = function() {
 	return this.toDateString() + ", " + this.toLocaleTimeString();
 }
 
-angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies', 'ngRoute', 'ngSanitize' ])
+angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader', 'ngCookies', 'ngRoute', 'ngSanitize' ])
 	// Setup route. There's only one route, and it's /<answerSheetKey>
 	.config([ '$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
 		$routeProvider.when('/:answerKey?/:masterKey?', {
@@ -72,7 +73,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 	})
 
 	// Top-level controller
-	.controller('W3FSurveyController', [ 'loader', 'spreadsheets', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', function(loader, gs, $scope, $rootScope, $q, $cookies, $routeParams, $interval) {
+	.controller('W3FSurveyController', [ 'loader', 'spreadsheets', 'gdrive', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', function(loader, gs, gdrive, $scope, $rootScope, $q, $cookies, $routeParams, $interval) {
 		var answerKey = $routeParams.answerKey;
 
 		if ( $routeParams.masterKey ) {
@@ -803,7 +804,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 	} ])
 
 	// A field for specifying a URL or a uploaded file
-	.directive('uploadableUrl', [ '$rootScope', function($rootScope) {
+	.directive('uploadableUrl', [ '$rootScope', '$http', 'gdrive', function($rootScope, $http, gdrive) {
 		return {
 			templateUrl: 'tpl/uploadable-url.html',
 			restrict: 'E',
@@ -887,8 +888,39 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 							if(status.status == 200) {
 								$scope.uploadState = "Uploaded";
 								$scope.model.locked = true;
-								$scope.model.url = results.alternateLink;
-								$scope.model.title  = results.title;
+								$scope.model.fileId = results.id;
+
+								// Give editor access to the service account to allow it to copy
+								// the uploaded file elsewhere through drivecopy.php
+								var promise = gdrive.insertPermission($scope.model.fileId, 'user', SERVICE_ACCOUNT, 'writer');
+
+								// Send file ID, name, and the survey country to the PHP proxy for
+								// futher file operations
+								promise.then(function(){
+									$http({
+										method: 'GET',
+										url: '/drivecopy.php',
+										params: {
+											fileId: $scope.model.fileId,
+											fileName: results.title,
+											country: $rootScope.country
+										}
+									})
+									.success(function(data, status, headers, config){
+										if(data.error) {
+											$scope.uploadState = "Upload Failed! " + data.error;
+											$scope.model.locked = false;
+										} else {
+											$scope.model.url = data.alternateLink;
+											$scope.model.title  = data.title;
+										}
+										console.log(data);
+									})
+									.error(function(data, status, headers, config){
+										$scope.uploadState = "Upload Failed! " + data.error;
+										$scope.model.locked = false;
+									});
+								});
 							}
 							else {
 								$scope.uploadState = "Upload Failed! Try again.";
@@ -1080,6 +1112,19 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 			}
 		});
 
+		$(document).on('click', '.helplink a', function(ev) {
+			ev.preventDefault();
+			$('#helplink-content').addClass('open')
+				.find('iframe').attr('src', $(this).attr('href'));
+
+		});
+
+		$(document).on('click', '#helplink-content .close', function(ev) {
+			ev.preventDefault();
+			$('#helplink-content').removeClass('open')
+				.find('iframe').attr('src', '');
+		});
+
 		function authenticated(authResult) {
 			if(!authResult || authResult.error) {
 				$rootScope.showSignin = true;
@@ -1112,6 +1157,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'W3FSurveyLoader', 'ngCookies',
 					loadSurvey();
 				});
 			});
+
+			gapi.client.load('drive', 'v2');
 		};
 
 		window.gapi_loaded = function() {

@@ -792,4 +792,36 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 	}
 	.uploadable-url-upload .button {
 		padding: .25em 1em;
+	}
 
+/**
+ * Further question guidance frame
+ */
+#helplink-content {
+	position: fixed;
+	margin: 0 100px;
+	bottom: 0;
+	height: 300px;
+	left: 0;
+	right: 0;
+	display: none;
+	background: #fff;
+}
+#helplink-content.open {
+	display: block;
+}
+	#helplink-content iframe {
+		width: 100%;
+		height: 100%;
+	}
+
+	#helplink-content .close {
+		position: absolute;
+		top: 2px;
+		right: 14px;
+		padding: 15px;
+		background: white;
+		border-left: 1px solid #ccc;
+		border-bottom: 1px solid #ccc;
+		cursor: pointer;
+	}
