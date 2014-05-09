@@ -25,7 +25,7 @@
 set_include_path ( __DIR__ );
 require_once 'Google/Client.php';
 require_once 'Google/Service/Drive.php';
-require_once 'config.php';
+require_once 'survey-config.php';
 
 if ( !defined( 'SERVICE_ACCOUNT_NAME' ) || !defined( 'KEY_FILE_LOCATION' ) ) {
 	$response = array(
