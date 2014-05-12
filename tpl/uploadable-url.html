@@ -2,7 +2,7 @@
 	<input type="text" ng-model="model.title" ng-disabled="disabled" placeholder="{{ placeholder }}" />
 
 	<div class="uploadable-url-url">
-		<input type="text" ng-model="model.url" ng-disabled="disabled || model.locked" placeholder="Enter URL for online resource or click Upload" ng-hide="model.locked" />
+		<input type="text" ng-model="model.url" ng-disabled="disabled || model.locked" placeholder="File location" ng-hide="model.locked" />
 
 		<div class="uploadable-url-preview-url" ng-if="model.locked">
 			<a class="uploadable-url-preview-url" href="{{ model.url }}" target="uploadedPreview">{{ model.url }}</a>

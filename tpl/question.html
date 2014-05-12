@@ -30,13 +30,13 @@
 
 		<textarea ng-model="response.justification" ng-if="!readOnly && !commentOnly"></textarea>
 
-		<h4 ng-if="readOnly || commentOnly">Justification response:</h4>
-		<div ng-if="readOnly || commentOnly" ng-bind-html="response.justification | markdown"></div>
+		<h4 ng-if="(readOnly || commentOnly) && response.justification">Justification response:</h4>
+		<div class="justification-response" ng-if="(readOnly || commentOnly) && response.justification" ng-bind-html="response.justification | markdown"></div>
 	</div>
 
 	<div ng-if="question.wantexamples == 'Yes'" class="examples">
 		<label>
-			<span>Please cite example URLs or upload supporting files</span>
+			<span>Upload supporting files</span>
 
 			<flexible-list collection="response.example" at-least="1" ng-disabled="readOnly || commentOnly" />
 			<p class="description">Note: Any uploaded files will be saved on your Google Drive and will be publicly accessible.</p>
