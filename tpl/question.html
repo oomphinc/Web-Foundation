@@ -34,6 +34,15 @@
 		<div ng-if="readOnly || commentOnly" ng-bind-html="response.justification | markdown"></div>
 	</div>
 
+	<div ng-if="question.wantexamples == 'Yes'" class="examples">
+		<label>
+			<span>Please cite example URLs or upload supporting files</span>
+
+			<flexible-list collection="response.example" at-least="1" ng-disabled="readOnly || commentOnly" />
+			<p class="description">Note: Any uploaded files will be saved on your Google Drive and will be publicly accessible.</p>
+		</label>
+	</div>
+
 	<div ng-if="supporting && !supporting.values || supporting.values.indexOf(response.response) > -1" ng-repeat="supporting in question.supporting" class="supporting">
 		<notes ng-if="!anonymous" field="$parent.supporting.id" />
 
@@ -68,15 +77,6 @@
 
 		<div class="guidance" ng-repeat="guidance in question.guidance" ng-style="{ width: (100 / question.guidance.length) + '%' }" ng-bind-html="(question.guidance.length > 1 ? guidance.weight + ' - ' : '') + guidance.content | markdown">
 		</div>
-	</div>
-
-	<div ng-if="question.wantexamples == 'Yes'" class="examples">
-		<label>
-			<span>Please cite example URLs</span>
-
-			<flexible-list collection="response.example" at-least="1" ng-disabled="readOnly || commentOnly" />
-			<p class="description">Note: Any uploaded files will be saved on your Google Drive and will be publicly accessible.</p>
-		</label>
 	</div>
 
 	<div ng-if="question.hasprivatenotes == 'Yes'" class="private-notes">
