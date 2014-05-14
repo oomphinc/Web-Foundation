@@ -73,7 +73,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 	})
 
 	// Top-level controller
-	.controller('W3FSurveyController', [ 'loader', 'spreadsheets', 'gdrive', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', function(loader, gs, gdrive, $scope, $rootScope, $q, $cookies, $routeParams, $interval) {
+	.controller('W3FSurveyController', [ 'loader', 'spreadsheets', 'gdrive', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', '$http', function(loader, gs, gdrive, $scope, $rootScope, $q, $cookies, $routeParams, $interval, $http) {
 		var answerKey = $routeParams.answerKey;
 
 		if ( $routeParams.masterKey ) {
@@ -903,7 +903,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 										params: {
 											fileId: $scope.model.fileId,
 											fileName: results.title,
-											country: $rootScope.country
+											country: $rootScope.country,
+											action: 'uploadNew'
 										}
 									})
 									.success(function(data, status, headers, config){

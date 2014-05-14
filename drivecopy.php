@@ -65,45 +65,66 @@ if( $client->getAuth()->isAccessTokenExpired() ) {
 }
 $_SESSION['service_token'] = $client->getAccessToken();
 
-/**
- * We're authenticated, now we will make a copy of the uploaded file
- * in the service account in case a survey taker later deletes the file
- * from their personal drive.
- */
-$country = htmlspecialchars( $_GET['country'] );
-$original_title = htmlspecialchars( $_GET['fileName'] );
-$original_id = htmlspecialchars( $_GET['fileId'] );
+if ( 'uploadNew' == $_GET['action'] ) {
+	/**
+	 * We're authenticated, now we will make a copy of the uploaded file
+	 * in the service account in case a survey taker later deletes the file
+	 * from their personal drive.
+	 */
+	$country = htmlspecialchars( $_GET['country'] );
+	$original_title = htmlspecialchars( $_GET['fileName'] );
+	$original_id = htmlspecialchars( $_GET['fileId'] );
 
-$copied_file = new Google_Service_Drive_DriveFile();
+	$copied_file = new Google_Service_Drive_DriveFile();
 
-// Prefix the filename with the country the survey is being taken for
-$copied_file->setTitle( $country . ' - ' . $original_title );
+	// Prefix the filename with the country the survey is being taken for
+	$copied_file->setTitle( $country . ' - ' . $original_title );
 
-try {
-	$new_file = $service->files->copy($original_id, $copied_file);
-} catch ( Exception $e ) {
-	$response = array(
-		'error' => $e->getMessage()
-	);
+	try {
+		$new_file = $service->files->copy($original_id, $copied_file);
+	} catch ( Exception $e ) {
+		$response = array(
+			'error' => $e->getMessage()
+		);
 
-	header("HTTP/1.0 502 Bad Gateway");
-	exit( json_encode( $response ) );
+		header("HTTP/1.0 502 Bad Gateway");
+		exit( json_encode( $response ) );
+	}
+
+	$newPermission = new Google_Service_Drive_Permission();
+	$newPermission->setRole( 'writer' );
+	$newPermission->setType( 'user' );
+	$newPermission->setValue( 'files@thewebindex.org' );
+
+	try {
+		$perm = $service->permissions->insert( $new_file->id, $newPermission );
+	} catch ( Exception $e ) {
+		$response = array(
+			'error' => $e->getMessage()
+		);
+
+		header("HTTP/1.0 502 Bad Gateway");
+		exit( json_encode( $response ) );
+	}
+
+	echo json_encode( $new_file );
+
+} elseif ( 'grantPerms' == $_GET['action'] ) {
+	$new_email = htmlspecialchars( $_GET['email'] );
+	$file_id = htmlspecialchars( $_GET['fileId'] );
+
+	$newPermission = new Google_Service_Drive_Permission();
+	$newPermission->setRole( 'reader' );
+	$newPermission->setType( 'user' );
+	$newPermission->setValue( $new_email );
+
+	try {
+		$perm = $service->permissions->insert( $file_id, $newPermission );
+	} catch ( Exception $e ) {
+		$response = array(
+			'error' => $e->getMessage()
+		);
+
+		exit( json_encode( $response ) );
+	}
 }
-
-$newPermission = new Google_Service_Drive_Permission();
-$newPermission->setRole( 'writer' );
-$newPermission->setType( 'user' );
-$newPermission->setValue( 'files@thewebindex.org' );
-
-try {
-	$perm = $service->permissions->insert( $new_file->id, $newPermission );
-} catch ( Exception $e ) {
-	$response = array(
-		'error' => $e->getMessage()
-	);
-
-	header("HTTP/1.0 502 Bad Gateway");
-	exit( json_encode( $response ) );
-}
-
-echo json_encode( $new_file );

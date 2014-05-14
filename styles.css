@@ -293,6 +293,11 @@ button {
 		border-radius: .75em;
 	}
 
+.justification-response {
+	padding: 10px;
+	border: 1px solid #b8b8b8;
+}
+
 .options {
 	list-style: none;
 	margin: 0;
