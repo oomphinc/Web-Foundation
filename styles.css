@@ -298,6 +298,10 @@ button {
 	border: 1px solid #b8b8b8;
 }
 
+.question .examples {
+	padding-top: 1em;
+}
+
 .options {
 	list-style: none;
 	margin: 0;
