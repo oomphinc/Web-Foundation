@@ -97,7 +97,7 @@ if ( 'uploadNew' == $_GET['action'] ) {
 	$newPermission->setValue( 'files@thewebindex.org' );
 
 	try {
-		$perm = $service->permissions->insert( $new_file->id, $newPermission );
+		$perm = $service->permissions->insert( $new_file->id, $newPermission, array('sendNotificationEmails' => false) );
 	} catch ( Exception $e ) {
 		$response = array(
 			'error' => $e->getMessage()
@@ -119,7 +119,7 @@ if ( 'uploadNew' == $_GET['action'] ) {
 	$newPermission->setValue( $new_email );
 
 	try {
-		$perm = $service->permissions->insert( $file_id, $newPermission );
+		$perm = $service->permissions->insert( $file_id, $newPermission, array('sendNotificationEmails' => false) );
 	} catch ( Exception $e ) {
 		$response = array(
 			'error' => $e->getMessage()

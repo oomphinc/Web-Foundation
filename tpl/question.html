@@ -36,7 +36,8 @@
 
 	<div ng-if="question.wantexamples == 'Yes'" class="examples">
 		<label>
-			<span>Upload supporting files</span>
+			<span ng-hide="readOnly || commentOnly">Upload supporting files</span>
+			<span ng-if="readOnly || commentOnly">Supporting files</span>
 
 			<flexible-list collection="response.example" at-least="1" ng-disabled="readOnly || commentOnly" />
 			<p class="description">Note: Any uploaded files will be saved on your Google Drive and will be publicly accessible.</p>

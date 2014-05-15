@@ -61,6 +61,7 @@ angular.module('GoogleDrive', [])
 
 			var request = gapi.client.drive.permissions.insert({
 				'fileId': fileId,
+				'sendNotificationEmails': false,
 				'resource': resource
 			});
 
