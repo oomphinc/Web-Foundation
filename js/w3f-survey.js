@@ -1127,6 +1127,16 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 		function authenticated(authResult) {
 			if(!authResult || authResult.error) {
+				if(!$rootScope.showSignin) {
+					// render the sign-in button
+					gapi.signin.render(document.getelementbyid('signin-button'), {
+						clientid: client_id,
+						scope: scope,
+						cookiepolicy: 'single_host_origin',
+						callback: authenticated
+					});
+				}
+
 				$rootScope.showSignin = true;
 				return;
 			}
@@ -1161,9 +1171,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			gapi.client.load('drive', 'v2');
 		};
 
-		window.gapi_loaded = function() {
-			$rootScope.loading = "Authenticating...";
-
+		window.gapi_authenticate = function() {
 			gapi.auth.authorize({
 				client_id: CLIENT_ID,
 				scope: SCOPE,
@@ -1171,12 +1179,20 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			}, authenticated);
 		}
 
-		// Render the sign-in button
-		gapi.signin.render(document.getElementById('signin-button'), {
-			clientid: CLIENT_ID,
-			scope: SCOPE,
-			cookiepolicy: 'single_host_origin',
-			callback: authenticated
-		});
+
 
 	} ]);
+
+window.gapi_loaded = function() {
+	var timer;
+
+	if(window.gapi_authenticate) {
+		clearTimeout(timer);
+
+		window.gapi_authenticate();
+	}
+	else {
+		// Wait until it is...
+		var timer = setTimeout(gapi_loaded, 200);
+	}
+}
