@@ -1129,8 +1129,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			if(!authResult || authResult.error) {
 				if(!$rootScope.showSignin) {
 					// render the sign-in button
-					gapi.signin.render(document.getElementById('signin-button'), {
-						client_id: CLIENT_ID,
+					gapi.signin.render('signin-button', {
+						clientid: CLIENT_ID,
 						scope: SCOPE,
 						cookiepolicy: 'single_host_origin',
 						callback: authenticated
