@@ -79,6 +79,6 @@ foreach( $headers as $header ) {
 }
 
 header( $headers[0] );
-header( $header['Content-Type'] );
+header( $headers['Content-Type'] );
 
 echo $body;
