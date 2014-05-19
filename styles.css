@@ -752,7 +752,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 		color: #777;
 		position: absolute;
 		left: 0;
-		padding: 6px 0;
+		padding: 0;
 		margin-top: 3px;
 	}
 		.flexible-list .flexible-list-delete:hover {
@@ -788,13 +788,13 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#b2e1ff', end
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
+	span.uploadable-url-preview-url {
+		display: block;
+		color: #777;
+		font-size: .9em;
+	}
 	.uploadable-url-url {
 		position: relative;
-	}
-	.uploadable-url-upload {
-		position: absolute;
-		top: 0;
-		right: 0;
 	}
 	.uploadable-url-upload input {
 		display: none;
