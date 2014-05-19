@@ -820,6 +820,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						$scope.placeholder = $scope.$eval(attrs.placeholder);
 					}
 				});
+				if($scope.model.url) {
+					$scope.model.uploaded = true;
+				}
 
 				$scope.$parent.$watch(attrs.ngDisabled, function(val) {
 					$scope.disabled = val;
@@ -835,6 +838,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 					var $index = $(upload).parents('.flexible-list-item').index();
 
 					var file = upload.files[0];
+					$scope.uploaded = false;
 
 					if(!file) {
 						console.log("File not found to upload!");
@@ -888,6 +892,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 							if(status.status == 200) {
 								$scope.uploadState = "Uploaded";
 								$scope.model.locked = true;
+								$scope.model.uploaded = true;
 								$scope.model.fileId = results.id;
 
 								// Give editor access to the service account to allow it to copy
@@ -911,6 +916,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 										if(data.error) {
 											$scope.uploadState = "Upload Failed! " + data.error;
 											$scope.model.locked = false;
+											$scope.model.uploaded = false;
 										} else {
 											$scope.model.url = data.alternateLink;
 											$scope.model.title  = data.title;
@@ -919,12 +925,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 									.error(function(data, status, headers, config){
 										$scope.uploadState = "Upload Failed! " + data.error;
 										$scope.model.locked = false;
+										$scope.model.uploaded = false;
 									});
 								});
 							}
 							else {
 								$scope.uploadState = "Upload Failed! Try again.";
 								$scope.model.locked = false;
+								$scope.model.uploaded = false;
 							}
 						});
 					}
