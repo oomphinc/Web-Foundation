@@ -7,7 +7,7 @@
 
 			<div class="uploadable-url-upload" ng-if="!model.locked && !disabled">
 				<label class="button">
-					{{ model.uploadState || "Upload..." }}
+					{{ uploadState || "Upload..." }}
 					<input type="file" onchange="angular.element(this).scope().upload(this)" ng-disabled="model.uploading" />
 				</label>
 			</div>
