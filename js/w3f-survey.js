@@ -1133,18 +1133,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				.find('iframe').attr('src', '');
 		});
 
-		function authenticated(authResult) {
+		window.gapi_authenticated = function(authResult) {
 			if(!authResult || authResult.error) {
-				if(!$rootScope.showSignin) {
-					// render the sign-in button
-					gapi.signin.render('signin-button', {
-						clientid: CLIENT_ID,
-						scope: SCOPE,
-						cookiepolicy: 'single_host_origin',
-						callback: authenticated
-					});
-				}
-
 				$rootScope.showSignin = true;
 				return;
 			}
@@ -1170,7 +1160,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			// Get the user's email address, then continue loading
 			gapi.client.load('oauth2', 'v2', function() {
 				gapi.client.oauth2.userinfo.get().execute(function(resp) {
-					$rootScope.userEmail = resp.email;
+					$rootScope.userEmail = resp.email.toLowerCase();
 
 					loadSurvey();
 				});
@@ -1180,11 +1170,13 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 		};
 
 		window.gapi_authenticate = function() {
-			gapi.auth.authorize({
-				client_id: CLIENT_ID,
+			// render the sign-in button
+			gapi.signin.render('signin-button', {
+				clientid: CLIENT_ID,
 				scope: SCOPE,
-				immediate: true
-			}, authenticated);
+				cookiepolicy: 'single_host_origin',
+				callback: 'gapi_authenticated' 
+			});
 		}
 	} ]);
 

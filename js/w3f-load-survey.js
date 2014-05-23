@@ -72,7 +72,7 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 				$rootScope.anonymous = $rootScope.participant == 'Anonymous';
 				$rootScope.country = $rootScope.control['Country'];
 
-				if($rootScope.anonymous) {
+				if($rootScope.anonymous && !$rootScope.userEmail.match(/@(thewebindex\.org|webfoundation\.org)$/)) {
 					q.reject();
 					return;
 				}
