@@ -891,8 +891,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 							if(status.status == 200) {
 								$scope.uploadState = "Uploaded";
-								$scope.model.locked = true;
-								$scope.model.uploaded = true;
 								$scope.model.fileId = results.id;
 
 								// Give editor access to the service account to allow it to copy
@@ -920,6 +918,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 										} else {
 											$scope.model.url = data.alternateLink;
 											$scope.model.title  = data.title;
+											$scope.model.locked = true;
+											$scope.model.uploaded = true;
 										}
 									})
 									.error(function(data, status, headers, config){
