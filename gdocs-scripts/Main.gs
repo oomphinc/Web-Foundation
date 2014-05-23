@@ -76,6 +76,33 @@ function countryState(country) {
 }
 
 /**
+ * Create new Answer sheet for a country from Answer template. 
+ */
+function createAnswerSheet(country) {
+  var ass = SpreadsheetApp.getActiveSpreadsheet(),
+      answerSheetID = getConfig("answer_template"),
+      ss = SpreadsheetApp.openById(answerSheetID),
+      control = ass.getSheetByName("Control"),
+      folderID = getConfig("folder"),
+      folder = DriveApp.getFolderById(folderID),
+      newSheet, file;
+
+  ass.toast("Creating answer sheet", country.name, -1);
+  
+  newSheet = ss.copy("WIS 2014 Answers - " + country.name);
+  
+  control.getRange("Q" + country.row).setValue(newSheet.getId());
+  
+  file = DriveApp.getFileById(newSheet.getId());
+  
+  folder.addFile(file);
+  
+  country.answerSheet = file.getId();
+  
+  return file.getId();
+}
+
+/**
  * Fill out configuration for answer sheet
  */
 function setupAnswerSheet(country, sheet) {
@@ -95,10 +122,10 @@ function setupAnswerSheet(country, sheet) {
   setValue(answerControl, 'Coordinator Email', participants.coordinator.emails[0]);
 
   ass.toast("Setting Researcher in answer sheet...", country.name, -1);
-  setValue(answerControl, 'Researcher', hex_md5(participants.researcher.emails[0]));
+  setValue(answerControl, 'Researcher', hex_md5(participants.researcher.emails[0].toLowerCase()));
 
   ass.toast("Setting Reviewer in answer sheet...", country.name, -1);
-  setValue(answerControl, 'Reviewer', hex_md5(participants.reviewer.emails[0]));
+  setValue(answerControl, 'Reviewer', hex_md5(participants.reviewer.emails[0].toLowerCase()));
 
   ass.toast("Setting Status in answer sheet...", country.name, -1);
 
@@ -120,11 +147,21 @@ function setupAnswerSheet(country, sheet) {
   var file = DriveApp.getFileById(sheet.getId()),
       editors = sheet.getEditors();
 
-  file.setShareableByEditors(false);
+  try {
+    file.setShareableByEditors(true);
+  }
+  catch(e) {
+    Logger.log("Failed to limit sharing by editors", e);
+  }
+  
   file.setDescription("Read-only answer sheet for " + country.name + ". Please do not access this sheet directly: instead, use the survey found at " + surveyUrl(sheet.getId()));
 
-  // First set to "Private" (otherwise SpreadsheetApp.addEditor fails)
-  file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.EDIT);
+  try {
+    // First set to "Private" (otherwise SpreadsheetApp.addEditor fails)
+    file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.EDIT);
+  } catch(e) {
+    Logger.log("Failed to setSharing PRIVATE/EDIT on file `" + file.getName() + "` with key `" + file.getId() + "`", e);
+  }
 
   // Remove all editors
   for(var i = 0; i < editors.length; i++) {
@@ -132,7 +169,7 @@ function setupAnswerSheet(country, sheet) {
       sheet.removeEditor(editors[i]);
     }
     catch(e) {
-      Logger.log("Well, I tried to remove " + editors[i] + "...", e);
+      Logger.log("Well, I tried to remove editor #" + i + "...", editors[i]);
     }
   }
 
@@ -148,12 +185,24 @@ function setupAnswerSheet(country, sheet) {
       sheet.addEditor(participants[role].emails[0]);
     }
     catch(e) {
-      ass.toast("Failed to add editor for role `" + role + "`", e);
+      Logger.log("Failed to add editor for `" + role + "`=`" + participants[role].emails[0] + "`", e);
     }
   }
 
   // Re-set answer sheet to DOMAIN-accessible
-  file.setSharing(DriveApp.Access.DOMAIN, DriveApp.Permission.EDIT);
+  try {
+    file.setSharing(DriveApp.Access.DOMAIN, DriveApp.Permission.EDIT);
+  } catch(e) {
+    Logger.log("Failed to setSharing DOMAIN/EDIT on file `" + file.getName() + "` with key `" + file.getId() + "`", e);
+  }
+
+  try {
+    file.setShareableByEditors(false);
+  }
+  catch(e) {
+    Logger.log("Failed to limit sharing by editors", e);
+  }
+  
 
   ass.toast('Done', country.name);
 }
@@ -626,4 +675,5 @@ function authorise() {
   DocsList.getFileById(handbook);
   DocsList.getFolderById(folderID);
 }
+
 
