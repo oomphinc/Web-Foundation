@@ -22,131 +22,6 @@
  ***/
 
 /**
- * Add menu to execute functions
- */
-function onOpen() {
-  var ass = SpreadsheetApp.getActiveSpreadsheet();
-  var menuEntries = [
-    {
-      name: "Create Answer Sheet",
-      functionName: "createAnswerSheetHandler"
-    },
-    {
-      name: "Synchronize Answer Sheet",
-      functionName: 'synchronizeAnswerSheetHandler'
-    }
-  ];
-  
-  ass.addMenu("Actions", menuEntries);
-}
-
-
-/**
- * Create new Answer sheet from Answer template. 
- */
-function createAnswerSheetHandler() {
-  var ass = SpreadsheetApp.getActiveSpreadsheet();
-  var answerSheet = getConfig('answer_template');
-  
-  var range = ass.getActiveRange();
-  var control = ass.getSheetByName('Control');
-
-  if(range.getSheet().getSheetId() != control.getSheetId()) {
-    Browser.msgBox('Please select a row in the "Control" spreadsheet.');
-  } 
-
-  var ss = SpreadsheetApp.openById(answerSheet);
-  
-  if(!ss) {
-    Browser.msgBox("Couldn't open answer sheet template with key=" + answerSheet);
-    return;
-  }
-  
-  if(range.getRow() == 1) {
-    Browser.msgBox("Can't operate on header row.");
-    return;
-  }
-
-  var firstRow = range.getRow(),
-      countries = loadCountries();
-  
-  for(var i = range.getRow(); i <= range.getLastRow(); i++) {
-    var country = countries[i-2];
-    
-    if(country.answerSheet != '') {
-      ass.toast("Answer Sheet already exists", country.name);
-      continue;
-    }
-    else {
-      ass.toast("Creating answer sheet", country.name, -1);
-
-      var folderID = getConfig("folder");
-      var folder = DriveApp.getFolderById(folderID);
-
-      var newSheet = ss.copy("WIS 2014 Answers - " + country.name);
-
-      control.getRange("Q" + country.row).setValue(newSheet.getId());
-
-      var file = DriveApp.getFileById(newSheet.getId());
-      
-      folder.addFile(file);
-      
-      setupAnswerSheet(country, newSheet);
-      shareAnswerSheet(country, newSheet);
-    }
-  }
-}
-
-/**
- * Iterate over rows selected when "Synchronous Answer Sheet" command is invoked, Refresh
- * sheet then set up
- */
-function synchronizeAnswerSheetHandler() {
-  var ass = SpreadsheetApp.getActiveSpreadsheet(),
-      range = ass.getActiveRange();
-  
-  if(range.getRow() == 1) {
-    ass.toast("Can't operate on header row...");
-    return;
-  }
-  
-  var control = ass.getSheetByName('Control');
-
-  if(range.getSheet().getSheetId() != control.getSheetId()) {
-    Browser.msgBox('Please select a row in the "Control" spreadsheet.');
-  }
-  
-  var countries = loadCountries();
-  
-  for(var i = range.getRow(); i <= range.getLastRow(); i++) {
-    var country = countries[i - 2];
-    
-    if(!country) {
-      ass.toast('There is no country for row #' + i);
-      continue;
-    }
-    
-    if(country.answerSheet == '') {
-      ass.toast('There is no Answer Sheet for ' + country.name + '.'); 
-      continue;
-    }
-  
-    var ss = SpreadsheetApp.openById(country.answerSheet);
-  
-    if(!ss) {
-      Browser.msgBox('Could not open Answer Sheet for ' + country.name + '.');
-      return;
-    }
-  
-    refreshAnswerSheet(country);
-    setupAnswerSheet(country, ss);
-  }
-  
-  ass.toast("Done setting up answer sheets.");
-}
-
-
-/**
  * Refresh data from all active survey spreadsheets periodically.
  * Use "Last Updated" column to track when a survey was last refreshed.
  * Only perform refresh operation if the survey sheet was updated after this timestamp.
@@ -163,56 +38,85 @@ function periodicUpdate(event) {
 }
  
 /**
- * Handle changes to the status column to move the sheet through the different processes
+ * Handle changes to the status column to move the sheet through the different processes,
+ * synchronize accordingly
  */
 function onUpdate(event) {  
   // Get sheet headers for duck-typing the sheet (Don't getSheetName() == 'Control' because the call is VERY slow)
   var ass = SpreadsheetApp.getActiveSpreadsheet(),
+      control = ass.getSheetByName('Control'),
       as = ass.getActiveSheet(),
       headers = (as.getRange(1, 1, 1, 10).getValues())[0],
-      status;
+      column = headers[event.range.getColumn()-1],
+      row = event.range.getRow(),
+      value = event.value,
+      country = loadCountry(row),
+      states, status, state, ss;
   
-  // Only pay attention to changes on "Current Status" field
-  if(headers[event.range.getColumn()-1] != 'Current Status' || event.range.getRow() == 1 || !event.value) {
+  // Only pay attention to changes on 'Synchronize?' and 'Current Status' columns
+  if(column != 'Synchronize?' && column != 'Current Status' || row == 1) {
     return;
   }
-
-  var state = event.value;
-  
-  // Sanity checks. Don't do anything for reset
-  var states = loadStates();
-
-  if(!states.recruitment) {
-    Browser.msgBox("Can't find initial `recruitment` state.");
-    return;
-  }
-  
-  for(status in states) {
-    if(states[status].label == state) {
-      // Get state object and key
-      state = status;
-      status = states[status];
-      break;
+ 
+  // For changes to "Synchronize?" field...
+  if(column == 'Synchronize?') {
+    if(value != 'Do it!') {
+      return;
+    }
+      
+    // Reset the field
+    control.getRange("C" + country.row).setValue("Synchronize...");
+    
+    if(!country.answerSheet) {
+      // Nothing to synchronize!
+      return;
     }
   }
-  
-  if(typeof status != "object") {
-    Browser.msgBox("Couldn't find associated status for state " + state);
-    return;
-  }
-  
-  var control = ass.getSheetByName('Control'),
-      row = event.range.getRow(),
-      country = loadCountry(row);
-  
-  if(state != 'recruitment' && country.answerSheet == '') {
-    Browser.msgBox("No answer sheet for this country yet. Please assign an answer sheet first.");
     
-    control.getRange(row, 5).setValue(states.recruitment.label);
+  // For changes to  "Current Status" field, override the state
+  if(column == 'Current Status' && value) {
+    // Sanity checks. Don't do anything for reset
+    states = loadStates();
+    
+    if(!states.recruitment) {
+      Browser.msgBox("Can't find initial `recruitment` state.");
+      return;
+    }
+    
+    for(status in states) {
+      if(states[status].label == value) {
+        // Get state object and key
+        state = status;
+        status = states[status];
+        break;
+      }
+    }
+    
+    if(typeof status != "object") {
+      Browser.msgBox("Couldn't find associated status for state " + state);
+      return;
+    }
+    
+    if(country.answerSheet == '') {    
+      // Make an answer sheet if there isn't one
+      if(state != 'recruitment') {
+        createAnswerSheet(country);
+      }
+      else {
+        // Don't create answer sheets when moving to recruitment
+        return;
+      }
+    }
+  }
+      
+  ss = SpreadsheetApp.openById(country.answerSheet);
+  
+  if(!ss) {
+    Browser.msgBox('Could not open Answer Sheet for ' + country.name + '.');
     return;
   }
   
-  // Refresh the answer sheet
-  refreshAnswerSheet(country, state);
+  refreshAnswerSheet(country);
+  setupAnswerSheet(country, ss);
 }
 
