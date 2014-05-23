@@ -1160,7 +1160,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			// Get the user's email address, then continue loading
 			gapi.client.load('oauth2', 'v2', function() {
 				gapi.client.oauth2.userinfo.get().execute(function(resp) {
-					$rootScope.userEmail = resp.email;
+					$rootScope.userEmail = resp.email.toLowerCase();
 
 					loadSurvey();
 				});
