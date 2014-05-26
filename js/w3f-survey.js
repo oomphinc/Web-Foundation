@@ -1134,6 +1134,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 		});
 
 		window.gapi_authenticated = function(authResult) {
+			if($rootScope.showSignin === false) {
+				return;
+			}
+
 			if(!authResult || authResult.error) {
 				$rootScope.showSignin = true;
 				return;
