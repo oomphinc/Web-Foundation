@@ -251,7 +251,7 @@ function refreshAnswerSheet(country, newStatus) {
 
     var state = countryState(country);
     if(state) {
-      setValue(answerControl, "Status", state.state);
+      setValue(answerControlSheet, "Status", state.state);
     }
   }
 
