@@ -84,7 +84,7 @@
 		<notes ng-if="!anonymous" field="'privateNotes'" />
 		<h4>Private notes: for reviewer / coordinator only.</h4>
 
-		<textarea ng-model="response.privateNotes" ng-disabled="readOnly || commentOnly"></textarea>
+		<textarea ng-model="response.privatenotes" ng-disabled="readOnly || commentOnly"></textarea>
 	</div>
 
 	<ng-include src="'tpl/question.html'" ng-repeat="question in question.subquestions"></ng-include>

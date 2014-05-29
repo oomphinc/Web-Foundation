@@ -416,7 +416,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 							response: values.response,
 							justification: values.justification,
 							confidence: values.confidence,
-							privatenotes: values.privateNotes
+							privatenotes: values.privatenotes
 						}, {
 							questionid: qid
 						});
