@@ -1148,10 +1148,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				return;
 			}
 
-			var loadSurvey = function() {
+			var authComplete = function() {
 				$rootScope.accessToken = authResult.access_token;
 				$rootScope.showSignin = false;
 
+				loadSurvey();
+			}
+
+			var loadSurvey = function() {
 				$rootScope.loading = "Loading Survey...";
 
 				$rootScope.status = {
@@ -1162,15 +1166,41 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			}
 
 			// Get the user's email address, then continue loading
-			gapi.client.load('oauth2', 'v2', function() {
-				gapi.client.oauth2.userinfo.get().execute(function(resp) {
-					$rootScope.userEmail = resp.email.toLowerCase();
+			if(!$rootScope.userEmail) {
+				gapi.client.load('oauth2', 'v2', function() {
+					gapi.client.oauth2.userinfo.get().execute(function(resp) {
+						$rootScope.userEmail = resp.email.toLowerCase();
 
-					loadSurvey();
+						authComplete();
+					});
 				});
-			});
 
-			gapi.client.load('drive', 'v2');
+				gapi.client.load('drive', 'v2');
+			}
+			else {
+				authComplete();
+			}
+
+			// Refresh the auth token at 75% of expires_in result
+			var refresh = function() {
+				gapi.auth.authorize({
+					client_id: CLIENT_ID, 
+					scope: SCOPE,
+					immediate: true
+				}, setRefresh);
+			}
+
+			var setRefresh = function(authResult) {
+				if(!authResult || authResult.error) {
+					$rootScope.showSignin = true;
+					$rootScope.status = "Sign-in expired, please sign in again.";
+					return;
+				}
+
+				setTimeout(refresh, authResult.expires_in * .75 * 1000);
+			}
+
+			setRefresh(authResult);
 		};
 
 		window.gapi_authenticate = function() {
