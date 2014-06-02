@@ -74,7 +74,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 	// Top-level controller
 	.controller('W3FSurveyController', [ 'loader', 'spreadsheets', 'gdrive', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', '$http', function(loader, gs, gdrive, $scope, $rootScope, $q, $cookies, $routeParams, $interval, $http) {
-		var answerKey = $routeParams.answerKey;
+		var answerKey = $routeParams.answerKey, queue;
 
 		if ( $routeParams.masterKey ) {
 			window.MASTER_KEY = $routeParams.masterKey;
@@ -242,11 +242,19 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			}
 		};
 
-		// Save queue
-		var queue = {
-			responses: {},
-			notes: {}
-		};
+		// Queue for data pending saves. Stored in localStorage as well.
+		try {
+			queue = JSON.parse(localStorage.queue);
+		}
+		catch(e) { };
+
+		if(typeof queue != "object") {
+			queue = {
+				responses: {},
+				notes: {},
+				updated: null
+			};
+		}
 
 		// Load the survey once we're ready.
 		$rootScope.$on('load-survey', function() {
@@ -257,6 +265,15 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 				$rootScope.$broadcast('loaded');
 
+				// For any existing responses or notes in the queue, replace the current answers
+				_.each(queue.responses, function(response, qid) {
+					$rootScope.responses[qid] = response;
+				});
+
+				_.each(queue.notes, function(note, qid) {
+						$rootScope.notes[qid] = response;
+				});
+				
 				// Only now that the answer sheet has been loaded
 				// do we watch for changes to the responses that might
 				// come from the user.
@@ -269,6 +286,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 					$rootScope.$watch("responses['" + qid + "']", function(oldValue, newValue) {
 						if(oldValue !== newValue) {
 							queue.responses[qid] = newValue;
+							queue.updated = new Date().getTime();
+
+							localStorage.queue = JSON.stringify(queue);
 						}
 					}, true);
 
@@ -279,6 +299,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 							var sectionid = $rootScope.questions[qid].sectionid;
 
 							$rootScope.countNotes(sectionid);
+							queue.updated = new Date().getTime();
+
+							localStorage.queue = JSON.stringify(queue);
 						}
 					}, true);
 				});
@@ -537,6 +560,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 									clear: 3000
 								};
 							}
+
+							queue[section] = {};
+
+							localStorage.queue = JSON.stringify(queue);
 						}, function(message) {
 							$rootScope.status = {
 								error: true,
@@ -545,8 +572,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						});
 					});
 				});
-
-				queue[section] = {};
 			});
 
 			if(size) {
