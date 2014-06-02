@@ -68,6 +68,11 @@ curl_setopt( $ch, CURLOPT_HTTPHEADER, array(
 
 $result = curl_exec( $ch );
 
+if( !$result ) {
+	http_response_code( 503 );
+	exit( 0 );
+}
+
 list( $headers, $body ) = split( "\r\n\r\n", $result, 2 );
 
 $headers = split( "\r\n", $headers );
