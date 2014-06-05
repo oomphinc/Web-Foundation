@@ -271,7 +271,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				});
 
 				_.each(queue.notes, function(note, qid) {
-						$rootScope.notes[qid] = response;
+						$rootScope.notes[qid] = note;
 				});
 				
 				// Only now that the answer sheet has been loaded
