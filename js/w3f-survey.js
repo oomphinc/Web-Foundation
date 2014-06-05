@@ -306,6 +306,204 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 					}, true);
 				});
 
+				//
+				// Manage updating the answer sheet
+				//
+
+				// Keep timers for processes here, cancelling pending changes to an update process
+				// when newer changes have occured
+				var processQueue = {
+					responses: {},
+					notes: {}
+				};
+
+				// Try to save every three seconds. Block the saves.
+				$interval(function() {
+					var size = 0;
+
+					// Process a queue for the two sections
+					_.each([ 'responses', 'notes' ], function(section) {
+						if($rootScope.readOnly || $rootScope.anonymous) {
+							return;
+						}
+
+						// Don't save question responses made by non-researchers
+						if(section == 'responses' && $rootScope.participant == 'Reviewer') {
+							return;
+						}
+
+						_.each(queue[section], function(response, qid) {
+							var q = queue[section];
+							var pq = processQueue[section];
+
+							var links = $rootScope.links[section];
+							var values = $rootScope[section][qid];
+
+							// Block the queue for this question. If there are further changes
+							// while this is saving, they will be picked up in the next round
+							// after the original process returns.
+							if(pq[qid]) {
+								return;
+							}
+
+							if(section == 'responses') {
+								// Build the record
+								var record = $.extend({}, {
+									response: values.response,
+									justification: values.justification,
+									confidence: values.confidence,
+									privatenotes: values.privatenotes
+								}, {
+									questionid: qid
+								});
+
+								// Copy over any supporting information
+								for(var i = 0; i < 10; i++) {
+									if(values['supporting' + i]) {
+										record['supporting' + i] = values['supporting' + i];
+									}
+								}
+
+								// Munge examples from model structure
+								_.each(values.example, function(example, i) {
+									var ex = _.extend({}, {
+										url: '',
+											text: ''
+									}, example);
+
+									if(ex.url && ex.title) {
+										// Store uploaded links as markdown-style
+										record['example' + i] = '[' + ex.title.replace(']', '\]') + '](' + ex.url + ')';
+									}
+									else if(ex.url) {
+										record['example' + i] = ex.url;
+									}
+									else if(ex.title) {
+										record['example' + i] = ex.title;
+									}
+								});
+
+								var promise;
+
+								if(links[qid]) {
+									promise = gs.updateRow(links[qid].edit, record, $rootScope.accessToken);
+								}
+								else {
+									promise = gs.insertRow($rootScope.answerSheets.Answers, record, $rootScope.accessToken);
+								}
+
+								promise.then(function(row) {
+									links[qid] = row[':links'];
+								});
+
+								pq[qid] = promise;
+							}
+							else if(section == 'notes') {
+								// Add created notes
+								_.each(_.filter(values, function(v) { return v.create; }), function(note) {
+									var record = {
+										questionid: note.questionid,
+										date: new Date().format(),
+										party: $rootScope.participant,
+										field: note.field,
+										note: note.note
+									};
+
+									var promise = gs.insertRow($rootScope.answerSheets.Notes, record, $rootScope.accessToken);
+
+									promise.then(function(row) {
+										note[':links'] = row[':links'];
+
+										delete note.create;
+										return row;
+									});
+
+									pq[qid] = promise;
+								});
+
+								// Update edited notes
+								_.each(_.filter(values, function(v) { return v.saveEdited || v.saveResolved; }), function(note) {
+									var record = {
+										questionid: note.questionid,
+										date: note.date,
+										party: $rootScope.participant,
+										field: note.field,
+										note: note.note,
+										edited: note.edited,
+										resolved: note.resolved
+									};
+
+									if(note.saveEdited) {
+										record.edited = new Date().format();
+									}
+									else if(note.saveResolved) {
+										record.resolved = new Date().format();
+									}
+
+									var promise = gs.updateRow(note[':links'].edit, record, $rootScope.accessToken);
+
+									promise.then(function(row) {
+										delete note.saveEdited;
+										delete note.saveResolved;
+
+										return row;
+									});
+
+									pq[qid] = promise;
+								});
+							}
+
+							// Clear deleted notes
+							_.each(_.filter(values, function(v) { return v.deleted; }), function(note) {
+								gs.deleteRow(note[':links'].edit, $rootScope.accessToken).then(function() {
+									$rootScope.notes[qid] = _.filter($rootScope.notes[qid], function(v) {
+										return !v.deleted;
+									});
+								});
+							});
+
+							size++;
+
+							promise.values = _.clone(q[qid]);
+
+							promise.then(function(row) {
+								var qid = row.questionid;
+
+								size--;
+
+								if(size == 0) {
+									$rootScope.status = {
+										message: "Last saved " + new Date().format(),
+										success: true,
+										clear: 3000
+									};
+								}
+
+								// If the values have changed, then let this run again, otherwise
+								// consider this question saved.
+								if(_.isEqual(q[qid], pq[qid].values)) {
+									console.log("clearing queue..");
+									delete q[qid];
+								}
+
+								delete pq[qid];
+
+								localStorage.queue = JSON.stringify(queue);
+							}, function(message) {
+								$rootScope.status = {
+									error: true,
+									message: "Failed to save changes"
+								};
+							});
+						});
+					});
+
+					if(size) {
+						$rootScope.status = {
+							saving: size
+						}
+					}
+				}, 3000);
 				$rootScope.commentOnly = $rootScope.participant == 'Reviewer';
 			}, function(message) {
 				$rootScope.error = message;
@@ -393,193 +591,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				return;
 			}
 		});
-
-		//
-		// Manage updating the answer sheet
-		//
-
-		// Keep timers for processes here, cancelling pending changes to an update process
-		// when newer changes have occured
-		var processQueue = {
-			responses: {},
-			notes: {}
-		};
-
-		// Three-second timer
-		$interval(function() {
-			var size = 0;
-
-			// Process a queue for the two sections
-			_.each([ 'responses', 'notes' ], function(section) {
-				if($rootScope.readOnly || $rootScope.anonymous) {
-					return;
-				}
-
-				// Don't save question responses made by non-researchers
-				if(section == 'responses' && $rootScope.participant == 'Reviewer') {
-					return;
-				}
-
-				_.each(queue[section], function(response, qid) {
-					var q = queue[section];
-					var pq = processQueue[section];
-
-					var links = $rootScope.links[section];
-					var values = $rootScope[section][qid];
-
-					if(pq[qid]) {
-						_.each(pq[qid], function(q) { q.abort(); });
-					}
-
-					pq[qid] = [];
-
-					if(section == 'responses') {
-						// Build the record
-						var record = $.extend({}, {
-							response: values.response,
-							justification: values.justification,
-							confidence: values.confidence,
-							privatenotes: values.privatenotes
-						}, {
-							questionid: qid
-						});
-
-						// Copy over any supporting information
-						for(var i = 0; i < 10; i++) {
-							if(values['supporting' + i]) {
-								record['supporting' + i] = values['supporting' + i];
-							}
-						}
-
-						// Munge examples from model structure
-						_.each(values.example, function(example, i) {
-							var ex = _.extend({}, {
-								url: '',
-								text: ''
-							}, example);
-
-							if(ex.url && ex.title) {
-								// Store uploaded links as markdown-style
-								record['example' + i] = '[' + ex.title.replace(']', '\]') + '](' + ex.url + ')';
-							}
-							else if(ex.url) {
-								record['example' + i] = ex.url;
-							}
-							else if(ex.title) {
-								record['example' + i] = ex.title;
-							}
-						});
-
-						var promise;
-
-						if(links[qid]) {
-							promise = gs.updateRow(links[qid].edit, record, $rootScope.accessToken);
-						}
-						else {
-							promise = gs.insertRow($rootScope.answerSheets.Answers, record, $rootScope.accessToken);
-						}
-
-						promise.then(function(row) {
-							links[qid] = row[':links'];
-						});
-
-						pq[qid].push(promise);
-					}
-					else if(section == 'notes') {
-						// Add created notes
-						_.each(_.filter(values, function(v) { return v.create; }), function(note) {
-							var record = {
-								questionid: note.questionid,
-								date: new Date().format(),
-								party: $rootScope.participant,
-								field: note.field,
-								note: note.note
-							};
-
-							var promise = gs.insertRow($rootScope.answerSheets.Notes, record, $rootScope.accessToken);
-
-							promise.then(function(row) {
-								note[':links'] = row[':links'];
-
-								delete note.create;
-								return row;
-							});
-
-							pq[qid].push(promise);
-						});
-
-						// Update edited notes
-						_.each(_.filter(values, function(v) { return v.saveEdited || v.saveResolved; }), function(note) {
-							var record = {
-								questionid: note.questionid,
-								date: note.date,
-								party: $rootScope.participant,
-								field: note.field,
-								note: note.note,
-								edited: note.edited,
-								resolved: note.resolved
-							};
-
-							if(note.saveEdited) {
-								record.edited = new Date().format();
-							}
-							else if(note.saveResolved) {
-								record.resolved = new Date().format();
-							}
-
-							var promise = gs.updateRow(note[':links'].edit, record, $rootScope.accessToken);
-
-							promise.then(function(row) {
-								delete note.saveEdited;
-								delete note.saveResolved;
-
-								return row;
-							});
-
-							pq[qid].push(promise);
-						});
-					}
-
-					_.each(_.filter(values, function(v) { return v.deleted; }), function(note) {
-						gs.deleteRow(note[':links'].edit, $rootScope.accessToken).then(function() {
-							$rootScope.notes[qid] = _.filter($rootScope.notes[qid], function(v) {
-								return !v.deleted;
-							});
-						});
-					});
-
-					_.each(pq[qid], function(ppq) {
-						size++;
-						ppq.then(function(row) {
-							size--;
-
-							if(size == 0) {
-								$rootScope.status = {
-									message: "Last saved " + new Date().format(),
-									success: true,
-									clear: 3000
-								};
-							}
-
-							queue[section] = {};
-
-							localStorage.queue = JSON.stringify(queue);
-						}, function(message) {
-							$rootScope.status = {
-								error: true,
-								message: "Failed to save changes"
-							};
-						});
-					});
-				});
-			});
-
-			if(size) {
-				$rootScope.status = {
-					saving: size
-				}
-			}
-		}, 3000);
 	} ])
 
 	// Create a rail exactly the size of the sections menu
