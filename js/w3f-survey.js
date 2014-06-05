@@ -462,6 +462,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 								});
 							});
 
+							if(!pq[qid]) {
+								return;
+							}
+
 							size++;
 
 							pq[qid].values = _.clone(q[qid]);
