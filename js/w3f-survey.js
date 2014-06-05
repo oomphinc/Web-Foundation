@@ -464,9 +464,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 							size++;
 
-							promise.values = _.clone(q[qid]);
+							pq[qid].values = _.clone(q[qid]);
 
-							promise.then(function(row) {
+							pq[qid].then(function(row) {
 								var qid = row.questionid;
 
 								size--;
