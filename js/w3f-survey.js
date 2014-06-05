@@ -482,7 +482,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 								// If the values have changed, then let this run again, otherwise
 								// consider this question saved.
 								if(_.isEqual(q[qid], pq[qid].values)) {
-									console.log("clearing queue..");
 									delete q[qid];
 								}
 
@@ -877,8 +876,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 					$scope.uploaded = false;
 
 					if(!file) {
-						console.log("File not found to upload!");
-						return
+						return;
 					}
 
 					const boundary = '-------314159265358979323846';
