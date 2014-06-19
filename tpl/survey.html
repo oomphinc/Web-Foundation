@@ -97,6 +97,23 @@
 	</section>
 </div>
 
+<modal id="locked-popup" model="status.locked">
+	<h2>Locked</h2>
+
+	<div ng-if="status.locked.takenover">
+		<p>
+			This survey has been taken over by another user, or you have opened another window. You must reload to continue.
+		</p>
+	</div>
+
+	<div ng-if="!status.locked.takenover">
+		<p>This survey is currenty locked by <strong>{{ status.locked.role }}</strong>. It was last updated at {{ localeTimeString(status.locked.time) }}. You can either take over this survey or view it in read-only</p>
+
+		<button class="cancel-button" ng-click="takeover()">Take Over</button>
+		<button class="complete-button" ng-click="continueReadonly()">View Read Only</button>
+	</div>
+</modal>
+
 <modal id="complete-popup" model="completing" cancel="complete(false)">
 	<h2>All Done?</h2>
 

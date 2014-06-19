@@ -25,16 +25,34 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 			'Notes': null
 		};
 
+		// Get control and set rootScope.control and $rootScope.links.control values
+		var loadControlValues = function() {
+			var q = $q.defer();
+
+			gs.getRows(answerKey, $rootScope.answerSheets.Control, $rootScope.accessToken, 'field').then(function(rows) {
+				_.each(rows, function(row, key) {
+					$rootScope.control[key] = row.value;
+					$rootScope.links.control[key] = row[':links'];
+				});
+
+				q.resolve();
+			}, function() {
+				q.reject();
+			});
+
+			return q.promise;
+		}
+
 		// Load the answer control sheet
 		var loadControl = function() {
 			$rootScope.loading = "Loading Control...";
 
 			var q = $q.defer();
 
-			gs.getRows(answerKey, $rootScope.answerSheets.Control, $rootScope.accessToken, 'field').then(function(rows) {
+			loadControlValues().then(function(rows) {
 				_.each(rows, function(row, key) {
 					$rootScope.control[key] = row.value;
-					$rootScope.links['control'][key] = row[':links'];
+					$rootScope.links.control[key] = row[':links'];
 				});
 
 				// Ensure all required fields are defined:
@@ -67,6 +85,8 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 					if(state && (state.party == $rootScope.participant || $rootScope.participant == 'Coordinator')) {
 						$rootScope.readOnly = false;
 					}
+
+					$rootScope.commentOnly = $rootScope.participant == 'Reviewer';
 				}
 
 				$rootScope.anonymous = $rootScope.participant == 'Anonymous';
@@ -392,7 +412,8 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 				answerKey = _answerKey;
 
 				return load();
-			}
+			},
+			loadControlValues: loadControlValues
 		};
 	} ]);
 

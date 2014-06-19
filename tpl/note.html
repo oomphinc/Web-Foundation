@@ -1,5 +1,5 @@
 <div class="note" ng-class="{ 'note-resolved': note.resolved, 'expanded-note': note.expanded }" ng-if="!note.deleted">
-	<div class="note-actions" ng-if="!note.editing && !note.resolved">
+	<div class="note-actions" ng-if="!note.editing && !note.resolved && !$rootScope.readOnly">
 		<a class="note-edit icon-pencil" title="Edit this note" ng-if="note.party == participant && !note.resolved" ng-click="edit($index)"></a>
 		<a class="note-delete icon-cancel-circle" title="Delete this note" ng-if="note.party == participant" ng-click="delete($index)"></a>
 	</div>

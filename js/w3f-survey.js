@@ -167,6 +167,13 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			}
 		}
 
+		// Continue with the survey, read-only
+		$rootScope.continueReadonly = function() {
+			$rootScope.readOnly = true;
+
+			$rootScope.status.locked = false;
+		}
+
 		// Count unresolved notes in a particular section, or if coordinator,
 		// count ALL unresolved notes
 		$rootScope.countNotes = function(sectionid) {
@@ -187,6 +194,59 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 				$rootScope.noteCount[sectionid] = count;
 			});
+		}
+
+		// toLocaleString a timestamp
+		$rootScope.localeTimeString = function(ts) {
+			var d = new Date();
+
+			d.setTime(ts)
+
+			return d.toLocaleString();
+		}
+
+		// Take over a survey
+		$rootScope.takeover = function() {
+			var lastAccess = $rootScope.control['Last Access'];
+
+			loader.loadControlValues().then(function() {
+				if($rootScope.control['Last Access'] != lastAccess) {
+					// Someone's change it since we last looked at it. Just reload
+					location.reload();
+					return;
+				}
+
+				// Otherwise, stomp it out!
+				$rootScope.lockSurvey();
+			});
+		}
+
+		// Create or update the lock for this survey
+		$rootScope.lockSurvey = function() {
+			var lockString = new Date().getTime() + '|' + $rootScope.participant,
+					record = {
+						field: 'Last Access',
+						value: lockString
+					},
+					promise;
+
+			if($rootScope.links.control['Last Access']) {
+				promise = gs.updateRow($rootScope.links.control['Last Access'].edit, record, $rootScope.accessToken);
+			}
+			else {
+				promise = gs.insertRow($rootScope.answerSheets.Control, record, $rootScope.accessToken);
+			}
+
+			promise.then(function() {
+				$rootScope.status.locked = false;
+				$cookies.lockString = $rootScope.lockString = lockString;
+				$rootScope.control['Last Access'] = lockString;
+			});
+		};
+
+		// Clear the lock for this survey. Do this when we navigate away or complete
+		$rootScope.unlockSurvey = function() {
+			gs.deleteRow($rootScope.links.control['Last Access'].edit, $rootScope.accessToken);
 		}
 
 		// Potential status flow
@@ -259,11 +319,30 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 		// Load the survey once we're ready.
 		$rootScope.$on('load-survey', function() {
 			loader.load(answerKey).then(function(status) {
+				// Check the exclusivity lock
+				var lastAccess = $rootScope.control['Last Access'],
+					matches = lastAccess && lastAccess.match(/^(\d+)\|(.+)$/);
+
+				if($cookies.lockString != lastAccess && matches) {
+					var timeDiff_s = (new Date().getTime() - matches[1]) / 1000;
+
+					// Notify caller that it was last accessed less than an hour ago and may be
+					// locked
+					if(timeDiff_s < 3600) {
+						status.locked = { time: matches[1], role: matches[2] };
+					}
+				}
+
 				$rootScope.status = status;
 				$rootScope.loaded = true;
 				$rootScope.loading = false;
 
 				$rootScope.$broadcast('loaded');
+
+				// Lock it up if noone else has
+				if(!status.locked) {
+					$rootScope.lockSurvey();
+				}
 
 				// For any existing responses or notes in the queue, replace the current answers
 				_.each(queue.responses, function(response, qid) {
@@ -307,7 +386,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				});
 
 				//
-				// Manage updating the answer sheet
+				// Manage updating the answersheet
 				//
 
 				// Keep timers for processes here, cancelling pending changes to an update process
@@ -317,18 +396,15 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 					notes: {}
 				};
 
-				// Try to save every three seconds. Block the saves.
-				$interval(function() {
+				// Write data to the Answer sheet. If this is called with a write in progress,
+				// the values are queued for the next write.
+				var write = function() {
 					var size = 0;
 
 					// Process a queue for the two sections
 					_.each([ 'responses', 'notes' ], function(section) {
-						if($rootScope.readOnly || $rootScope.anonymous) {
-							return;
-						}
-
 						// Don't save question responses made by non-researchers
-						if(section == 'responses' && $rootScope.participant == 'Reviewer') {
+						if(section == 'responses' && $rootScope.commentOnly) {
 							return;
 						}
 
@@ -502,12 +578,55 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 					});
 
 					if(size) {
+						// Update the lock
+						$rootScope.lockSurvey();
+
 						$rootScope.status = {
 							saving: size
 						}
 					}
-				}, 3000);
-				$rootScope.commentOnly = $rootScope.participant == 'Reviewer';
+				}
+
+				// Try to save every three seconds.
+				$interval(function() {
+					if($rootScope.status.locked || $rootScope.readOnly) {
+						return;
+					}
+
+					if($rootScope.readOnly || $rootScope.anonymous) {
+						return;
+					}
+
+					var q = $q.defer();
+
+					// Check the lock before making any changes
+					loader.loadControlValues().then(function() {
+						if($rootScope.control['Last Access'] == $rootScope.lockString) {
+							q.resolve();
+						}
+						else {
+							// Someone's change it since we last looked at it. Force the user to reload.
+							var matches = $rootScope.control['Last Access'] && $rootScope.control['Last Access'].match(/^(\d+)\|(.+)$/);
+
+							if(matches) {
+								// Notify user that someone else has taken over the survey and lock out
+								$rootScope.status = {
+									locked: {
+										time: matches[1],
+										role: matches[2],
+										takenover: true
+									},
+									message: "Survey has been taken over."
+								};
+
+								q.reject();
+							}
+						}
+					});
+
+					q.promise.then(write);
+				}, 10000);
+
 			}, function(message) {
 				$rootScope.error = message;
 				$rootScope.loading = false;
@@ -572,6 +691,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						}
 					});
 
+				$rootScope.unlockSurvey();
 				$rootScope.readOnly = true;
 				$rootScope.completing = false;
 				$rootScope.surveyStatus = completing;
@@ -1128,6 +1248,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			templateUrl: 'tpl/modal.html',
 			transclude: true,
 			replace: true,
+			scope: true,
 			link: function($scope, element, attrs) {
 				$scope.$watch(attrs.model, function(val) {
 					$scope.showing = val;
@@ -1178,6 +1299,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			if(!authResult || authResult.error) {
 				$rootScope.showSignin = true;
+				$rootScope.$digest();
 				return;
 			}
 
