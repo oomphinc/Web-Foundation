@@ -239,7 +239,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			promise.then(function() {
 				$rootScope.status.locked = false;
-				$cookies.lockString = $rootScope.lockString = lockString;
+				$cookies['lockString-' + answerKey] = $rootScope.lockString = lockString;
 				$rootScope.control['Last Access'] = lockString;
 			});
 		};
@@ -323,7 +323,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				var lastAccess = $rootScope.control['Last Access'],
 					matches = lastAccess && lastAccess.match(/^(\d+)\|(.+)$/);
 
-				if($cookies.lockString != lastAccess && matches) {
+				if($cookies['lockString-' + answerKey] != lastAccess && matches) {
 					var timeDiff_s = (new Date().getTime() - matches[1]) / 1000;
 
 					// Notify caller that it was last accessed less than an hour ago and may be
