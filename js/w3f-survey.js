@@ -571,7 +571,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 							}, function(message) {
 								$rootScope.status = {
 									error: true,
-									message: "Failed to save changes"
+									message: "Failed to save changes. Please reload to continue"
 								};
 							});
 						});
@@ -589,11 +589,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 				// Try to save every three seconds.
 				$interval(function() {
-					if($rootScope.status.locked || $rootScope.readOnly) {
-						return;
-					}
-
-					if($rootScope.readOnly || $rootScope.anonymous) {
+					if($rootScope.status.locked || $rootScope.status.error || $rootScope.readOnly || $rootScope.anonymous) {
 						return;
 					}
 
@@ -622,6 +618,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 								q.reject();
 							}
 						}
+					}, function() {
+						$rootScope.status = {
+							error: true,
+							message: "Failed to save changes. Please reload to continue"
+						};
 					});
 
 					q.promise.then(write);
