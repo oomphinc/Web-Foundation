@@ -567,7 +567,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 								delete pq[qid];
 
-								localStorage.queue = JSON.stringify(queue);
+								localStorage['queue-' + answerKey] = JSON.stringify(queue);
 							}, function(message) {
 								$rootScope.status = {
 									error: true,
