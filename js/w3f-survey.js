@@ -304,7 +304,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 		// Queue for data pending saves. Stored in localStorage as well.
 		try {
-			queue = JSON.parse(localStorage.queue);
+			queue = JSON.parse(localStorage['queue-' + answerKey]);
 		}
 		catch(e) { };
 
@@ -367,7 +367,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 							queue.responses[qid] = newValue;
 							queue.updated = new Date().getTime();
 
-							localStorage.queue = JSON.stringify(queue);
+							localStorage['queue-' + answerKey] = JSON.stringify(queue);
 						}
 					}, true);
 
@@ -380,7 +380,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 							$rootScope.countNotes(sectionid);
 							queue.updated = new Date().getTime();
 
-							localStorage.queue = JSON.stringify(queue);
+							localStorage['queue-' + answerKey] = JSON.stringify(queue);
 						}
 					}, true);
 				});
