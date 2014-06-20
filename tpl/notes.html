@@ -17,12 +17,12 @@
 		<ng-include src="'tpl/note.html'" ng-repeat="note in notes"></ng-include>
 	</div>
 
-	<div class="notes-actions" ng-show="!addingNote" ng-if="!$rootScope.readOnly">
+	<div class="notes-actions" ng-show="!addingNote && !$rootScope.readOnly">
 		<button class="add-note" ng-click="addingNote=true"><span class="icon-pencil"></span> Add Note</button>
 		<a class="note-resolve icon-checkmark-circle" title="Resolve Notes" ng-if="notes.length > 0" ng-click="resolve(notes)"></a>
 	</div>
 
-	<div class="add-note-form" ng-show="addingNote" ng-if="!$rootScope.readOnly">
+	<div class="add-note-form" ng-show="addingNote !$rootScope.readOnly">
 		<textarea ng-model="newNote"></textarea>
 
 		<button class="save-note" ng-click="addNote();">Save</button>
