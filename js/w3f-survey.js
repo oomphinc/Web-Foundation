@@ -346,11 +346,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 				// For any existing responses or notes in the queue, replace the current answers
 				_.each(queue.responses, function(response, qid) {
-					$rootScope.responses[qid] = response;
+					_.extend($rootScope.responses[qid], response);
 				});
 
 				_.each(queue.notes, function(note, qid) {
-						$rootScope.notes[qid] = note;
+					_.extend($rootScope.notes[qid], note);
 				});
 				
 				// Only now that the answer sheet has been loaded
@@ -361,28 +361,43 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				//
 				// BUG: oldValue and newValue are the same in this call from $watchCollection -
 				// See: https://github.com/angular/angular.js/issues/2621.
+				console.log("registering watchers for " + _.keys($rootScope.questions).join( ', ' ));
 				_.each(_.keys($rootScope.questions), function(qid) {
-					$rootScope.$watch("responses['" + qid + "']", function(oldValue, newValue) {
-						if(oldValue !== newValue) {
-							queue.responses[qid] = newValue;
-							queue.updated = new Date().getTime();
-
-							localStorage['queue-' + answerKey] = JSON.stringify(queue);
+					if(!$rootScope.responses[qid]) {
+						console.log("response for " + qid + " does not exist");
+					}
+					$rootScope.$watchCollection("responses['" + qid + "']", function(oldValue, newValue) {
+						if(oldValue === newValue) {
+							console.log("watcher registered for responses on " + qid);
+							return;
 						}
-					}, true);
 
+						queue.responses[qid] = newValue;
+						queue.updated = new Date().getTime();
+
+						localStorage['queue-' + answerKey] = JSON.stringify(queue);
+						console.log("updated value for " + qid );
+					});
+
+					if(!$rootScope.notes[qid]) {
+						console.log("notes for " + qid + " does not exist");
+					}
 					// Also watch for changes in notes collections
-					$rootScope.$watch("notes['" + qid + "']", function(oldValue, newValue) {
-						if(oldValue !== newValue) {
-							queue.notes[qid] = newValue;
-							var sectionid = $rootScope.questions[qid].sectionid;
-
-							$rootScope.countNotes(sectionid);
-							queue.updated = new Date().getTime();
-
-							localStorage['queue-' + answerKey] = JSON.stringify(queue);
+					$rootScope.$watchCollection("notes['" + qid + "']", function(oldValue, newValue) {
+						if(oldValue === newValue) {
+							console.log("watcher registered for notes on " + qid);
+							return;
 						}
-					}, true);
+
+						queue.notes[qid] = newValue;
+						var sectionid = $rootScope.questions[qid].sectionid;
+
+						$rootScope.countNotes(sectionid);
+						queue.updated = new Date().getTime();
+
+						localStorage['queue-' + answerKey] = JSON.stringify(queue);
+						console.log("updated note for " + qid );
+					});
 				});
 
 				//
@@ -634,7 +649,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				$rootScope.readOnly = true;
 			});
 
-		})
+		});
 
 		/**
 		 * Accept a boolean or a string,
