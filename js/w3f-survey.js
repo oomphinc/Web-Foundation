@@ -685,8 +685,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				}, $rootScope.accessToken)
 					.then(function() {
 						$rootScope.status = {
-							message: "Submitted. Please return again!",
-							readOnly: "This survey is now read-only. Please return again.",
+							message: "Submitted!",
+							readOnly: "This survey is now read-only.",
 							success: true
 						}
 					});
