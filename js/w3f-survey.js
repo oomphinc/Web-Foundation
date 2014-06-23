@@ -361,14 +361,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				//
 				// BUG: oldValue and newValue are the same in this call from $watchCollection -
 				// See: https://github.com/angular/angular.js/issues/2621.
-				console.log("registering watchers for " + _.keys($rootScope.questions).join( ', ' ));
 				_.each(_.keys($rootScope.questions), function(qid) {
-					if(!$rootScope.responses[qid]) {
-						console.log("response for " + qid + " does not exist");
-					}
 					$rootScope.$watchCollection("responses['" + qid + "']", function(oldValue, newValue) {
 						if(oldValue === newValue) {
-							console.log("watcher registered for responses on " + qid);
 							return;
 						}
 
@@ -376,16 +371,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						queue.updated = new Date().getTime();
 
 						localStorage['queue-' + answerKey] = JSON.stringify(queue);
-						console.log("updated value for " + qid );
 					});
 
-					if(!$rootScope.notes[qid]) {
-						console.log("notes for " + qid + " does not exist");
-					}
 					// Also watch for changes in notes collections
 					$rootScope.$watchCollection("notes['" + qid + "']", function(oldValue, newValue) {
 						if(oldValue === newValue) {
-							console.log("watcher registered for notes on " + qid);
 							return;
 						}
 
@@ -396,7 +386,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						queue.updated = new Date().getTime();
 
 						localStorage['queue-' + answerKey] = JSON.stringify(queue);
-						console.log("updated note for " + qid );
 					});
 				});
 
