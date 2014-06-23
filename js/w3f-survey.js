@@ -59,7 +59,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			// Replace links with their markdown equivalent. Don't do this for
 			// already marked-down or auto-linked links.
 			while(matches = linkRegex.exec(input)) {
-				if(matches[1] == '](' || matches[1].substr(-1) == '<') {
+				if(matches[1] && (matches[1] == '](' || matches[1].substr(-1) == '<')) {
 					continue;
 				}
 
