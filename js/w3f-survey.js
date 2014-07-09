@@ -186,16 +186,20 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			_.each(sections, function(sectionid) {
 				var count = 0;
-
-				_.each($rootScope.sections[sectionid].questions, function(question) {
-					var notes = $rootScope.notes[question.questionid];
-					for(var i in notes) {
-						if(notes.hasOwnProperty(i) && !notes[i].resolved) {
-							count++;
-							return;
+				var munge = function(questions) {
+					_.each(questions, function(question) {
+						var notes = $rootScope.notes[question.questionid];
+						for(var i in notes) {
+							if(notes.hasOwnProperty(i) && !notes[i].resolved) {
+								count++;
+								break;
+							}
 						}
-					}
-				});
+						munge(question.subquestions);
+					});
+				}
+
+				munge($rootScope.sections[sectionid].questions);
 
 				$rootScope.noteCount[sectionid] = count;
 			});
@@ -378,8 +382,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						localStorage['queue-' + answerKey] = JSON.stringify(queue);
 					});
 
-					// Also watch for changes in notes collections
-					$rootScope.$watch("notes['" + qid + "']", function(oldValue, newValue) {
+					var watchNotes = function(oldValue, newValue) {
 						if(oldValue === newValue) {
 							return;
 						}
@@ -391,7 +394,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						queue.updated = new Date().getTime();
 
 						localStorage['queue-' + answerKey] = JSON.stringify(queue);
-					}, true);
+					}
+
+					// Also watch for changes in notes collections
+					$rootScope.$watchCollection("notes['" + qid + "']", watchNotes);
+					$rootScope.$watch("notes['" + qid + "']", watchNotes, true);
 				});
 
 				//
@@ -507,7 +514,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 								});
 
 								// Update edited notes
-								_.each(_.filter(values, function(v) { return v.saveEdited || v.saveResolved; }), function(note) {
+								_.each(_.filter(values, function(v) { return !v.create && (v.saveEdited || v.saveResolved); }), function(note) {
 									var record = {
 										questionid: note.questionid,
 										date: note.date,
@@ -540,11 +547,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 							// Clear deleted notes
 							_.each(_.filter(values, function(v) { return v.deleted; }), function(note) {
-								gs.deleteRow(note[':links'].edit, $rootScope.accessToken).then(function() {
+								var complete = function() {
 									$rootScope.notes[qid] = _.filter($rootScope.notes[qid], function(v) {
 										return !v.deleted;
 									});
-								});
+
+									return true;
+								}
+								gs.deleteRow(note[':links'].edit, $rootScope.accessToken).then(complete, complete);
 							});
 
 							if(!pq[qid]) {
