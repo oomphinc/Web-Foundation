@@ -76,6 +76,19 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 	.controller('W3FSurveyController', [ 'loader', 'spreadsheets', 'gdrive', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', '$http', function(loader, gs, gdrive, $scope, $rootScope, $q, $cookies, $routeParams, $interval, $http) {
 		var answerKey = $routeParams.answerKey, queue;
 
+		if($routeParams.masterKey == 'clear') {
+			// Clear out my local storage and redirect back
+			delete localStorage['queue-' + answerKey];
+			location.pathname = answerKey;
+			return;
+		}
+
+		if($routeParams.masterKey == 'readonly') {
+			// Force readonly mode
+			$rootScope.forceReadOnly = true;
+			$routeParams.masterKey = '';
+		}
+
 		if ( $routeParams.masterKey ) {
 			window.MASTER_KEY = $routeParams.masterKey;
 		}
@@ -352,7 +365,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				_.each(queue.notes, function(note, qid) {
 					_.extend($rootScope.notes[qid], note);
 				});
-				
+
 				// Only now that the answer sheet has been loaded
 				// do we watch for changes to the responses that might
 				// come from the user.
@@ -523,6 +536,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 									var promise = gs.updateRow(note[':links'].edit, record, $rootScope.accessToken);
 
 									promise.then(function(row) {
+										if($rootScope.forceReadOnly) {
+											$rootScope.readOnly = true;
+										}
+
+										if($rootScope.forceReadOnly) {
+											$rootScope.readOnly = true;
+										}
+
 										delete note.saveEdited;
 										delete note.saveResolved;
 
@@ -564,8 +585,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 								}
 
 								// If the values have changed, then let this run again, otherwise
-								// consider this question saved.
-								if(_.isEqual(q[qid], pq[qid].values)) {
+								// consider this value saved
+								if(pq[qid] && _.isEqual(q[qid], pq[qid].values)) {
 									delete q[qid];
 								}
 
@@ -1349,7 +1370,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			// Refresh the auth token at 75% of expires_in result
 			var refresh = function() {
 				gapi.auth.authorize({
-					client_id: CLIENT_ID, 
+					client_id: CLIENT_ID,
 					scope: SCOPE,
 					immediate: true
 				}, setRefresh);
@@ -1374,7 +1395,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				clientid: CLIENT_ID,
 				scope: SCOPE,
 				cookiepolicy: 'single_host_origin',
-				callback: 'gapi_authenticated' 
+				callback: 'gapi_authenticated'
 			});
 		}
 	} ]);
