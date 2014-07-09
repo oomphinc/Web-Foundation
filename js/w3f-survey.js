@@ -83,6 +83,12 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			return;
 		}
 
+		if($routeParams.masterKey == 'readonly') {
+			// Force readonly mode
+			$rootScope.forceReadOnly = true;
+			$routeParams.masterKey = '';
+		}
+
 		if ( $routeParams.masterKey ) {
 			window.MASTER_KEY = $routeParams.masterKey;
 		}
@@ -531,6 +537,14 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 									var promise = gs.updateRow(note[':links'].edit, record, $rootScope.accessToken);
 
 									promise.then(function(row) {
+										if($rootScope.forceReadOnly) {
+											$rootScope.readOnly = true;
+										}
+
+										if($rootScope.forceReadOnly) {
+											$rootScope.readOnly = true;
+										}
+
 										delete note.saveEdited;
 										delete note.saveResolved;
 
@@ -573,7 +587,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 								// If the values have changed, then let this run again, otherwise
 								// consider this value saved
-								if(_.isEqual(q[qid], pq[qid].values)) {
+								if(pq[qid] && _.isEqual(q[qid], pq[qid].values)) {
 									delete q[qid];
 								}
 
