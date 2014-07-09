@@ -89,10 +89,14 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 					$rootScope.commentOnly = $rootScope.participant == 'Reviewer';
 				}
 
+				if($rootScope.forceReadOnly) {
+					$rootScope.readOnly = true;
+				}
+
 				$rootScope.anonymous = $rootScope.participant == 'Anonymous';
 				$rootScope.country = $rootScope.control['Country'];
 
-				if($rootScope.anonymous && !$rootScope.userEmail.match(/@(thewebindex\.org|webfoundation\.org)$/)) {
+				if($rootScope.anonymous && !$rootScope.userEmail.match(/@(thewebindex\.org|webfoundation\.org|thinkoomph\.com)$/)) {
 					q.reject();
 					return;
 				}
