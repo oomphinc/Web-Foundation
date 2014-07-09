@@ -374,7 +374,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 					});
 
 					// Also watch for changes in notes collections
-					$rootScope.$watchCollection("notes['" + qid + "']", function(oldValue, newValue) {
+					$rootScope.$watch("notes['" + qid + "']", function(oldValue, newValue) {
 						if(oldValue === newValue) {
 							return;
 						}
@@ -386,7 +386,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						queue.updated = new Date().getTime();
 
 						localStorage['queue-' + answerKey] = JSON.stringify(queue);
-					});
+					}, true);
 				});
 
 				//
