@@ -142,7 +142,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			if(nextNote) {
 				var st = parseInt(window.scrollY),
-				  min = Number.MAX_SAFE_INTEGER, 
+				  min = Number.MAX_SAFE_INTEGER,
 				  $skipTo, $firstNote, skipHeight;
 
 				_.each($rootScope.notes, function(notes, questionid) {
@@ -154,7 +154,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 					for(var i = 0; i < notes.length; i++) {
 						if(!notes[i].resolved) {
-							var $el = $('#note-' + question.qid + '-' + notes[i].field), 
+							var $el = $('#note-' + question.qid + '-' + notes[i].field),
 								diff = parseInt($el.offset().top) - st - 60;
 
 							if(!$el.length) {
@@ -405,6 +405,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						}
 
 						queue.notes[qid] = newValue;
+
 						var sectionid = $rootScope.questions[qid].sectionid;
 
 						$rootScope.countNotes(sectionid);
@@ -605,7 +606,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 								// If the values have changed, then let this run again, otherwise
 								// consider this value saved
+<<<<<<< HEAD
 								if(pq[qid] && _.isEqual(q[qid], pq[qid].values)) {
+=======
+								if(_.isEqual(q[qid], pq[qid].values)) {
+>>>>>>> a03af05... WF-24: Fixed 'failed to save' loop bug that had to do with stale notes in the localStorage queue. Added 'clear' path option to clear the local queue. Consider 409 responses from Google not-incorrect.
 									delete q[qid];
 								}
 
@@ -633,9 +638,16 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 				// Try to save every three seconds.
 				$interval(function() {
-					if($rootScope.status.locked || $rootScope.status.error || $rootScope.readOnly || $rootScope.anonymous) {
+					// Don't bother if:
+					if($rootScope.status.locked || // Locked
+					   $rootScope.status.error || // An error occured
+					   $rootScope.readOnly || // The survey is read-only
+					   $rootScope.anonymous) // The survey is anonymous
 						return;
-					}
+
+					// Also don't bother if there's nothing to save
+					if(_.isEmpty(queue.notes) && _.isEmpty(queue.responses))
+						return;
 
 					var q = $q.defer();
 

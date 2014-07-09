@@ -173,6 +173,12 @@ angular.module('GoogleSpreadsheets', [])
 
 		function updateRow(url, values, accessToken) {
 			var deferred = defer();
+			var parseResponse = function(data) {
+				var xml = new DOMParser().parseFromString(data, "text/xml");
+				var entries = xml.getElementsByTagName('entry');
+
+				return mungeEntry(entries[0]);
+			}
 
 			$http({
 				method: 'POST',
@@ -184,12 +190,15 @@ angular.module('GoogleSpreadsheets', [])
 				data: $.param(values)
 			})
 				.success(function(data, status, headers, config) {
-					var xml = new DOMParser().parseFromString(data, "text/xml")
-					var entries = xml.getElementsByTagName('entry');
-
-					deferred.resolve(mungeEntry(entries[0]));
+					deferred.resolve(parseResponse(data));
 				})
 				.error(function(data, status, headers, config) {
+					// Don't necessarily call 409 status an error: maybe nothing was going to change
+					// anyway
+					if(status == 409) {
+						deferred.resolve(parseResponse(data));
+					}
+					
 					deferred.reject(data);
 				});
 			
