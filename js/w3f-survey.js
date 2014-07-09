@@ -19,7 +19,7 @@
 var MASTER_KEY = '0ApqzJROt-jZ0dGNoZFFtMnB3dVctNWxyc295dENFWHc';
 var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
 var SERVICE_ACCOUNT = '397381159562-6qdpfe2af1mp8acvf2rps74ksudesi45@developer.gserviceaccount.com'
-var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file';
+var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/drive.file';
 
 // Gimme a range op!
 Array.prototype.range = function(n) {
@@ -75,6 +75,13 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 	// Top-level controller
 	.controller('W3FSurveyController', [ 'loader', 'spreadsheets', 'gdrive', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', '$http', function(loader, gs, gdrive, $scope, $rootScope, $q, $cookies, $routeParams, $interval, $http) {
 		var answerKey = $routeParams.answerKey, queue;
+
+		if($routeParams.masterKey == 'clear') {
+			// Clear out my local storage and redirect back
+			delete localStorage['queue-' + answerKey];
+			location.pathname = answerKey;
+			return;
+		}
 
 		if ( $routeParams.masterKey ) {
 			window.MASTER_KEY = $routeParams.masterKey;
@@ -380,6 +387,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						}
 
 						queue.notes[qid] = newValue;
+						
 						var sectionid = $rootScope.questions[qid].sectionid;
 
 						$rootScope.countNotes(sectionid);
@@ -564,7 +572,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 								}
 
 								// If the values have changed, then let this run again, otherwise
-								// consider this question saved.
+								// consider this value saved
 								if(_.isEqual(q[qid], pq[qid].values)) {
 									delete q[qid];
 								}
@@ -593,9 +601,16 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 				// Try to save every three seconds.
 				$interval(function() {
-					if($rootScope.status.locked || $rootScope.status.error || $rootScope.readOnly || $rootScope.anonymous) {
+					// Don't bother if:
+					if($rootScope.status.locked || // Locked
+					   $rootScope.status.error || // An error occured
+					   $rootScope.readOnly || // The survey is read-only
+					   $rootScope.anonymous) // The survey is anonymous
 						return;
-					}
+
+					// Also don't bother if there's nothing to save
+					if(_.isEmpty(queue.notes) && _.isEmpty(queue.responses))
+						return;
 
 					var q = $q.defer();
 
@@ -1332,11 +1347,22 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			// Get the user's email address, then continue loading
 			if(!$rootScope.userEmail) {
-				gapi.client.load('oauth2', 'v2', function() {
-					gapi.client.oauth2.userinfo.get().execute(function(resp) {
-						$rootScope.userEmail = resp.email.toLowerCase();
+				gapi.client.load('plus', 'v1', function() {
+					var request = gapi.client.plus.people.get({ userId: 'me' });
 
-						authComplete();
+					request.execute(function(resp) {
+						var accountEmails = _.where(resp.emails, { type: 'account' });
+
+						if(accountEmails.length) {
+							$rootScope.userEmail = accountEmails[0].value;
+							authComplete();
+							return;
+						}
+
+						$rootScope.status = {
+							message: "Couldn't determine your primary email address.",
+							error: true
+						}
 					});
 				});
 
@@ -1358,7 +1384,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			var setRefresh = function(authResult) {
 				if(!authResult || authResult.error) {
 					$rootScope.showSignin = true;
-					$rootScope.status = "Sign-in expired, please sign in again.";
+					$rootScope.status = {
+						message: "Sign-in expired, please sign in again.",
+						error: true
+					}
 					return;
 				}
 
