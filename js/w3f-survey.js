@@ -189,12 +189,16 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				var munge = function(questions) {
 					_.each(questions, function(question) {
 						var notes = $rootScope.notes[question.questionid];
-						for(var i in notes) {
-							if(notes.hasOwnProperty(i) && !notes[i].resolved) {
+						var fields = {};
+
+						for(i = 0; i < notes.length; i++) {
+							if(!fields[notes[i].field] && !notes[i].resolved) {
 								count++;
-								break;
 							}
+
+							fields[notes[i].field] = true;
 						}
+
 						munge(question.subquestions);
 					});
 				}
