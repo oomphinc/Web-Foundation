@@ -141,7 +141,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			}
 
 			if(nextNote) {
-				var st = window.scrollY, $skipTo, $firstNote;
+				var st = parseInt(window.scrollY),
+				  min = Number.MAX_SAFE_INTEGER, 
+				  $skipTo, $firstNote, skipHeight;
 
 				_.each($rootScope.notes, function(notes, questionid) {
 					var question = $rootScope.questions[questionid];
@@ -150,21 +152,24 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						return;
 					}
 
-					for(var i in notes) {
-						if(notes.hasOwnProperty(i) && !notes[i].resolved) {
-							var $el = $('#note-' + question.qid + '-' + notes[i].field);
+					for(var i = 0; i < notes.length; i++) {
+						if(!notes[i].resolved) {
+							var $el = $('#note-' + question.qid + '-' + notes[i].field), 
+								diff = parseInt($el.offset().top) - st - 60;
 
 							if(!$el.length) {
 								continue;
 							}
 
-							if(!$firstNote) {
+							$el.offsetTop = parseInt($el.offset().top);
+
+							if(!$firstNote || $el.offsetTop < $firstNote.offsetTop) {
 								$firstNote = $el;
 							}
 
-							if(!$skipTo && st < parseInt($el.offset().top) - 60) {
+							if(diff > 0 && diff < min) {
 								$skipTo = $el;
-								return;
+								min = diff;
 							}
 						}
 					}
@@ -175,7 +180,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				}
 
 				if($skipTo) {
-					window.scroll(0, $skipTo.offset().top - 60);
+					window.scroll(0, $skipTo.offsetTop - 60);
 				}
 			}
 		}
@@ -197,12 +202,16 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				var munge = function(questions) {
 					_.each(questions, function(question) {
 						var notes = $rootScope.notes[question.questionid];
-						for(var i in notes) {
-							if(notes.hasOwnProperty(i) && !notes[i].resolved) {
+						var fields = {};
+
+						for(i = 0; i < notes.length; i++) {
+							if(!fields[notes[i].field] && !notes[i].resolved) {
 								count++;
-								break;
 							}
+
+							fields[notes[i].field] = true;
 						}
+
 						munge(question.subquestions);
 					});
 				}
