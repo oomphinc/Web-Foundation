@@ -76,13 +76,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 	.controller('W3FSurveyController', [ 'loader', 'spreadsheets', 'gdrive', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', '$http', function(loader, gs, gdrive, $scope, $rootScope, $q, $cookies, $routeParams, $interval, $http) {
 		var answerKey = $routeParams.answerKey, queue;
 
-		if($routeParams.masterKey == 'clear') {
-			// Clear out my local storage and redirect back
-			delete localStorage['queue-' + answerKey];
-			location.pathname = answerKey;
-			return;
-		}
-
 		if ( $routeParams.masterKey ) {
 			window.MASTER_KEY = $routeParams.masterKey;
 		}
@@ -387,7 +380,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						}
 
 						queue.notes[qid] = newValue;
-						
 						var sectionid = $rootScope.questions[qid].sectionid;
 
 						$rootScope.countNotes(sectionid);
@@ -572,7 +564,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 								}
 
 								// If the values have changed, then let this run again, otherwise
-								// consider this value saved
+								// consider this question saved.
 								if(_.isEqual(q[qid], pq[qid].values)) {
 									delete q[qid];
 								}
@@ -601,16 +593,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 				// Try to save every three seconds.
 				$interval(function() {
-					// Don't bother if:
-					if($rootScope.status.locked || // Locked
-					   $rootScope.status.error || // An error occured
-					   $rootScope.readOnly || // The survey is read-only
-					   $rootScope.anonymous) // The survey is anonymous
+					if($rootScope.status.locked || $rootScope.status.error || $rootScope.readOnly || $rootScope.anonymous) {
 						return;
-
-					// Also don't bother if there's nothing to save
-					if(_.isEmpty(queue.notes) && _.isEmpty(queue.responses))
-						return;
+					}
 
 					var q = $q.defer();
 

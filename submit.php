@@ -45,11 +45,6 @@ if( $method != 'POST' && $method != 'PUT' && $method != 'DELETE' ) {
 
 $ch = curl_init( $url );
 
-$http_headers = array(
-	'Authorization: Bearer ' . $accessToken,
-	'Content-Type: application/atom+xml'
-);
-
 if( $method != 'DELETE' && count( $_POST ) > 0 ) {
 	$payload = '<entry xmlns="http://www.w3.org/2005/Atom" xmlns:gsx="http://schemas.google.com/spreadsheets/2006/extended">';
 
@@ -59,8 +54,6 @@ if( $method != 'DELETE' && count( $_POST ) > 0 ) {
 
 	$payload .= '</entry>';
 
-	$http_headers[] = 'Content-Length: ' . strlen( $payload );
-
 	curl_setopt( $ch, CURLOPT_POSTFIELDS, $payload );
 }
 
@@ -68,7 +61,10 @@ if( $method != 'DELETE' && count( $_POST ) > 0 ) {
 curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, $method );
 curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
 curl_setopt( $ch, CURLOPT_HEADER, true );
-curl_setopt( $ch, CURLOPT_HTTPHEADER, $http_headers );
+curl_setopt( $ch, CURLOPT_HTTPHEADER, array(
+	'Authorization: Bearer ' . $accessToken,
+	'Content-Type: application/atom+xml'
+) );
 
 $result = curl_exec( $ch );
 
