@@ -19,7 +19,7 @@
 var MASTER_KEY = '0ApqzJROt-jZ0dGNoZFFtMnB3dVctNWxyc295dENFWHc';
 var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
 var SERVICE_ACCOUNT = '397381159562-6qdpfe2af1mp8acvf2rps74ksudesi45@developer.gserviceaccount.com'
-var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/drive.file';
+var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file';
 
 // Gimme a range op!
 Array.prototype.range = function(n) {
@@ -1332,22 +1332,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			// Get the user's email address, then continue loading
 			if(!$rootScope.userEmail) {
-				gapi.client.load('plus', 'v1', function() {
-					var request = gapi.client.plus.people.get({ userId: 'me' });
+				gapi.client.load('oauth2', 'v2', function() {
+					gapi.client.oauth2.userinfo.get().execute(function(resp) {
+						$rootScope.userEmail = resp.email.toLowerCase();
 
-					request.execute(function(resp) {
-						var accountEmails = _.where(resp.emails, { type: 'account' });
-
-						if(accountEmails.length) {
-							$rootScope.userEmail = accountEmails[0].value;
-							authComplete();
-							return;
-						}
-
-						$rootScope.status = {
-							message: "Couldn't determine your primary email address.",
-							error: true
-						}
+						authComplete();
 					});
 				});
 
@@ -1369,10 +1358,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			var setRefresh = function(authResult) {
 				if(!authResult || authResult.error) {
 					$rootScope.showSignin = true;
-					$rootScope.status = {
-						message: "Sign-in expired, please sign in again.",
-						error: true
-					}
+					$rootScope.status = "Sign-in expired, please sign in again.";
 					return;
 				}
 
