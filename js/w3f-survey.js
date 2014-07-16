@@ -19,7 +19,7 @@
 var MASTER_KEY = '0ApqzJROt-jZ0dGNoZFFtMnB3dVctNWxyc295dENFWHc';
 var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
 var SERVICE_ACCOUNT = '397381159562-6qdpfe2af1mp8acvf2rps74ksudesi45@developer.gserviceaccount.com'
-var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/drive.file';
+var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file';
 
 // Gimme a range op!
 Array.prototype.range = function(n) {
@@ -76,19 +76,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 	.controller('W3FSurveyController', [ 'loader', 'spreadsheets', 'gdrive', '$scope', '$rootScope', '$q', '$cookies', '$routeParams', '$interval', '$http', function(loader, gs, gdrive, $scope, $rootScope, $q, $cookies, $routeParams, $interval, $http) {
 		var answerKey = $routeParams.answerKey, queue;
 
-		if($routeParams.masterKey == 'clear') {
-			// Clear out my local storage and redirect back
-			delete localStorage['queue-' + answerKey];
-			location.pathname = answerKey;
-			return;
-		}
-
-		if($routeParams.masterKey == 'readonly') {
-			// Force readonly mode
-			$rootScope.forceReadOnly = true;
-			$routeParams.masterKey = '';
-		}
-
 		if ( $routeParams.masterKey ) {
 			window.MASTER_KEY = $routeParams.masterKey;
 		}
@@ -142,7 +129,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			if(nextNote) {
 				var st = parseInt(window.scrollY),
-				  min = Number.MAX_SAFE_INTEGER, 
+				  min = Number.MAX_SAFE_INTEGER,
 				  $skipTo, $firstNote, skipHeight;
 
 				_.each($rootScope.notes, function(notes, questionid) {
@@ -154,7 +141,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 					for(var i = 0; i < notes.length; i++) {
 						if(!notes[i].resolved) {
-							var $el = $('#note-' + question.qid + '-' + notes[i].field), 
+							var $el = $('#note-' + question.qid + '-' + notes[i].field),
 								diff = parseInt($el.offset().top) - st - 60;
 
 							if(!$el.length) {
@@ -199,24 +186,16 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			_.each(sections, function(sectionid) {
 				var count = 0;
-				var munge = function(questions) {
-					_.each(questions, function(question) {
-						var notes = $rootScope.notes[question.questionid];
-						var fields = {};
 
-						for(i = 0; i < notes.length; i++) {
-							if(!fields[notes[i].field] && !notes[i].resolved) {
-								count++;
-							}
-
-							fields[notes[i].field] = true;
+				_.each($rootScope.sections[sectionid].questions, function(question) {
+					var notes = $rootScope.notes[question.questionid];
+					for(var i in notes) {
+						if(notes.hasOwnProperty(i) && !notes[i].resolved) {
+							count++;
+							return;
 						}
-
-						munge(question.subquestions);
-					});
-				}
-
-				munge($rootScope.sections[sectionid].questions);
+					}
+				});
 
 				$rootScope.noteCount[sectionid] = count;
 			});
@@ -378,7 +357,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				_.each(queue.notes, function(note, qid) {
 					_.extend($rootScope.notes[qid], note);
 				});
-				
+
 				// Only now that the answer sheet has been loaded
 				// do we watch for changes to the responses that might
 				// come from the user.
@@ -399,24 +378,20 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						localStorage['queue-' + answerKey] = JSON.stringify(queue);
 					});
 
-					var watchNotes = function(oldValue, newValue) {
+					// Also watch for changes in notes collections
+					$rootScope.$watch("notes['" + qid + "']", function(oldValue, newValue) {
 						if(oldValue === newValue) {
 							return;
 						}
 
 						queue.notes[qid] = newValue;
-						
 						var sectionid = $rootScope.questions[qid].sectionid;
 
 						$rootScope.countNotes(sectionid);
 						queue.updated = new Date().getTime();
 
 						localStorage['queue-' + answerKey] = JSON.stringify(queue);
-					}
-
-					// Also watch for changes in notes collections
-					$rootScope.$watchCollection("notes['" + qid + "']", watchNotes);
-					$rootScope.$watch("notes['" + qid + "']", watchNotes, true);
+					}, true);
 				});
 
 				//
@@ -532,7 +507,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 								});
 
 								// Update edited notes
-								_.each(_.filter(values, function(v) { return !v.create && (v.saveEdited || v.saveResolved); }), function(note) {
+								_.each(_.filter(values, function(v) { return v.saveEdited || v.saveResolved; }), function(note) {
 									var record = {
 										questionid: note.questionid,
 										date: note.date,
@@ -553,14 +528,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 									var promise = gs.updateRow(note[':links'].edit, record, $rootScope.accessToken);
 
 									promise.then(function(row) {
-										if($rootScope.forceReadOnly) {
-											$rootScope.readOnly = true;
-										}
-
-										if($rootScope.forceReadOnly) {
-											$rootScope.readOnly = true;
-										}
-
 										delete note.saveEdited;
 										delete note.saveResolved;
 
@@ -573,14 +540,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 							// Clear deleted notes
 							_.each(_.filter(values, function(v) { return v.deleted; }), function(note) {
-								var complete = function() {
+								gs.deleteRow(note[':links'].edit, $rootScope.accessToken).then(function() {
 									$rootScope.notes[qid] = _.filter($rootScope.notes[qid], function(v) {
 										return !v.deleted;
 									});
-
-									return true;
-								}
-								gs.deleteRow(note[':links'].edit, $rootScope.accessToken).then(complete, complete);
+								});
 							});
 
 							if(!pq[qid]) {
@@ -605,8 +569,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 								}
 
 								// If the values have changed, then let this run again, otherwise
-								// consider this value saved
-								if(pq[qid] && _.isEqual(q[qid], pq[qid].values)) {
+								// consider this question saved.
+								if(_.isEqual(q[qid], pq[qid].values)) {
 									delete q[qid];
 								}
 
@@ -634,16 +598,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 				// Try to save every three seconds.
 				$interval(function() {
-					// Don't bother if:
-					if($rootScope.status.locked || // Locked
-					   $rootScope.status.error || // An error occured
-					   $rootScope.readOnly || // The survey is read-only
-					   $rootScope.anonymous) // The survey is anonymous
+					if($rootScope.status.locked || $rootScope.status.error || $rootScope.readOnly || $rootScope.anonymous) {
 						return;
-
-					// Also don't bother if there's nothing to save
-					if(_.isEmpty(queue.notes) && _.isEmpty(queue.responses))
-						return;
+					}
 
 					var q = $q.defer();
 
@@ -1380,22 +1337,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			// Get the user's email address, then continue loading
 			if(!$rootScope.userEmail) {
-				gapi.client.load('plus', 'v1', function() {
-					var request = gapi.client.plus.people.get({ userId: 'me' });
+				gapi.client.load('oauth2', 'v2', function() {
+					gapi.client.oauth2.userinfo.get().execute(function(resp) {
+						$rootScope.userEmail = resp.email.toLowerCase();
 
-					request.execute(function(resp) {
-						var accountEmails = _.where(resp.emails, { type: 'account' });
-
-						if(accountEmails.length) {
-							$rootScope.userEmail = accountEmails[0].value;
-							authComplete();
-							return;
-						}
-
-						$rootScope.status = {
-							message: "Couldn't determine your primary email address.",
-							error: true
-						}
+						authComplete();
 					});
 				});
 
@@ -1408,7 +1354,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			// Refresh the auth token at 75% of expires_in result
 			var refresh = function() {
 				gapi.auth.authorize({
-					client_id: CLIENT_ID, 
+					client_id: CLIENT_ID,
 					scope: SCOPE,
 					immediate: true
 				}, setRefresh);
@@ -1417,10 +1363,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			var setRefresh = function(authResult) {
 				if(!authResult || authResult.error) {
 					$rootScope.showSignin = true;
-					$rootScope.status = {
-						message: "Sign-in expired, please sign in again.",
-						error: true
-					}
+					$rootScope.status = "Sign-in expired, please sign in again.";
 					return;
 				}
 
@@ -1436,7 +1379,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				clientid: CLIENT_ID,
 				scope: SCOPE,
 				cookiepolicy: 'single_host_origin',
-				callback: 'gapi_authenticated' 
+				callback: 'gapi_authenticated'
 			});
 		}
 	} ]);
