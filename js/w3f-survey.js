@@ -194,7 +194,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 		// Count unresolved notes in a particular section, or if coordinator,
 		// count ALL unresolved notes
-		$rootScope.countNotes = function(sectionid) {
+		$rootScope.countNotes = function(sectionid, onlyUnresolved) {
 			var sections = sectionid ? [ sectionid ] : $rootScope.sectionOrder;
 
 			_.each(sections, function(sectionid) {
@@ -205,8 +205,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						var fields = {};
 
 						for(i = 0; i < notes.length; i++) {
-							if(!fields[notes[i].field] && !notes[i].resolved) {
-								count++;
+							if(!fields[notes[i].field]) {
+								if((onlyUnresolved && !notes[i].resolved) || !onlyUnresolved) {
+									count++;
+								}
 							}
 
 							fields[notes[i].field] = true;

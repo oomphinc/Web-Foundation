@@ -127,7 +127,7 @@
 	<p>{{ statusFlow[surveyStatus].transitionMessage }}</p>
 	<p>Please confirm that you are finished completing this survey and are satisfied with your answers.</p>
 
-	<p ng-if="count = countNotes()">
+	<p ng-if="count = countNotes(false, true)">
 		There are {{ count }} unresolved notes.
 	</p>
 
