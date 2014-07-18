@@ -606,11 +606,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 								// If the values have changed, then let this run again, otherwise
 								// consider this value saved
-<<<<<<< HEAD
 								if(pq[qid] && _.isEqual(q[qid], pq[qid].values)) {
-=======
-								if(_.isEqual(q[qid], pq[qid].values)) {
->>>>>>> a03af05... WF-24: Fixed 'failed to save' loop bug that had to do with stale notes in the localStorage queue. Added 'clear' path option to clear the local queue. Consider 409 responses from Google not-incorrect.
 									delete q[qid];
 								}
 
