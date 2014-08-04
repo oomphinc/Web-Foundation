@@ -194,8 +194,9 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 		// Count unresolved notes in a particular section, or if coordinator,
 		// count ALL unresolved notes
-		$rootScope.countNotes = function(sectionid, onlyUnresolved) {
+		$rootScope.countNotes = function(sectionid) {
 			var sections = sectionid ? [ sectionid ] : $rootScope.sectionOrder;
+			var totalCount = 0;
 
 			_.each(sections, function(sectionid) {
 				var count = 0;
@@ -205,12 +206,10 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						var fields = {};
 
 						for(i = 0; i < notes.length; i++) {
-							if(!fields[notes[i].field] && (!onlyUnresolved || onlyUnresolved && !notes[i].resolved)) {
+							if(!fields[notes[i].field] && !notes[i].resolved) {
 								count++;
 								fields[notes[i].field] = true;
 							}
-
-							fields[notes[i].field] = true;
 						}
 
 						munge(question.subquestions);
@@ -220,7 +219,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				munge($rootScope.sections[sectionid].questions);
 
 				$rootScope.noteCount[sectionid] = count;
+
+				totalCount += count;
 			});
+
+			return totalCount;
 		}
 
 		// toLocaleString a timestamp
