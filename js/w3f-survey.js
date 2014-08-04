@@ -19,7 +19,7 @@
 var MASTER_KEY = '0ApqzJROt-jZ0dGNoZFFtMnB3dVctNWxyc295dENFWHc';
 var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
 var SERVICE_ACCOUNT = '397381159562-6qdpfe2af1mp8acvf2rps74ksudesi45@developer.gserviceaccount.com'
-var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/drive.file';
+var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file';
 
 // Gimme a range op!
 Array.prototype.range = function(n) {
@@ -142,7 +142,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			if(nextNote) {
 				var st = parseInt(window.scrollY),
-				  min = Number.MAX_SAFE_INTEGER, 
+				  min = Number.MAX_SAFE_INTEGER,
 				  $skipTo, $firstNote, skipHeight;
 
 				_.each($rootScope.notes, function(notes, questionid) {
@@ -154,7 +154,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 					for(var i = 0; i < notes.length; i++) {
 						if(!notes[i].resolved) {
-							var $el = $('#note-' + question.qid + '-' + notes[i].field), 
+							var $el = $('#note-' + question.qid + '-' + notes[i].field),
 								diff = parseInt($el.offset().top) - st - 60;
 
 							if(!$el.length) {
@@ -194,7 +194,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 		// Count unresolved notes in a particular section, or if coordinator,
 		// count ALL unresolved notes
-		$rootScope.countNotes = function(sectionid) {
+		$rootScope.countNotes = function(sectionid, onlyUnresolved) {
 			var sections = sectionid ? [ sectionid ] : $rootScope.sectionOrder;
 
 			_.each(sections, function(sectionid) {
@@ -205,10 +205,12 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						var fields = {};
 
 						for(i = 0; i < notes.length; i++) {
-							if(!fields[notes[i].field] && !notes[i].resolved) {
+							if(!fields[notes[i].field] && (!onlyUnresolved || onlyUnresolved && !notes[i].resolved)) {
 								count++;
 								fields[notes[i].field] = true;
 							}
+
+							fields[notes[i].field] = true;
 						}
 
 						munge(question.subquestions);
@@ -376,7 +378,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				_.each(queue.notes, function(note, qid) {
 					_.extend($rootScope.notes[qid], note);
 				});
-				
+
 				// Only now that the answer sheet has been loaded
 				// do we watch for changes to the responses that might
 				// come from the user.
@@ -1391,22 +1393,11 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			// Get the user's email address, then continue loading
 			if(!$rootScope.userEmail) {
-				gapi.client.load('plus', 'v1', function() {
-					var request = gapi.client.plus.people.get({ userId: 'me' });
+				gapi.client.load('oauth2', 'v2', function() {
+					gapi.client.oauth2.userinfo.get().execute(function(resp) {
+						$rootScope.userEmail = resp.email.toLowerCase();
 
-					request.execute(function(resp) {
-						var accountEmails = _.where(resp.emails, { type: 'account' });
-
-						if(accountEmails.length) {
-							$rootScope.userEmail = accountEmails[0].value;
-							authComplete();
-							return;
-						}
-
-						$rootScope.status = {
-							message: "Couldn't determine your primary email address.",
-							error: true
-						}
+						authComplete();
 					});
 				});
 
@@ -1419,7 +1410,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			// Refresh the auth token at 75% of expires_in result
 			var refresh = function() {
 				gapi.auth.authorize({
-					client_id: CLIENT_ID, 
+					client_id: CLIENT_ID,
 					scope: SCOPE,
 					immediate: true
 				}, setRefresh);
@@ -1428,10 +1419,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			var setRefresh = function(authResult) {
 				if(!authResult || authResult.error) {
 					$rootScope.showSignin = true;
-					$rootScope.status = {
-						message: "Sign-in expired, please sign in again.",
-						error: true
-					}
+					$rootScope.status = "Sign-in expired, please sign in again.";
 					return;
 				}
 
@@ -1447,7 +1435,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				clientid: CLIENT_ID,
 				scope: SCOPE,
 				cookiepolicy: 'single_host_origin',
-				callback: 'gapi_authenticated' 
+				callback: 'gapi_authenticated'
 			});
 		}
 	} ]);
