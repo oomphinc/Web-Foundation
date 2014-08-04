@@ -138,6 +138,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				$rootScope.activeSection = $cookies.section = section;
 				window.scroll(0,0);
 				window.location.hash = '';
+				return;
 			}
 
 			if(nextNote) {
@@ -357,7 +358,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 					// Notify caller that it was last accessed less than an hour ago and may be
 					// locked
-					if(timeDiff_s < 3600) {
+					if(timeDiff_s < 3600 && !$rootScope.readOnly) {
 						status.locked = { time: matches[1], role: matches[2] };
 					}
 				}
