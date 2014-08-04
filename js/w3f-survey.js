@@ -207,9 +207,8 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 						for(i = 0; i < notes.length; i++) {
 							if(!fields[notes[i].field] && !notes[i].resolved) {
 								count++;
+								fields[notes[i].field] = true;
 							}
-
-							fields[notes[i].field] = true;
 						}
 
 						munge(question.subquestions);
@@ -338,7 +337,6 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 			queue = {
 				responses: {},
 				notes: {},
-				updated: null
 			};
 		}
 
@@ -384,33 +382,34 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				// come from the user.
 				//
 				// Watch responses to add any changes to the save queue
-				//
-				// BUG: oldValue and newValue are the same in this call from $watchCollection -
-				// See: https://github.com/angular/angular.js/issues/2621.
 				_.each(_.keys($rootScope.questions), function(qid) {
-					$rootScope.$watchCollection("responses['" + qid + "']", function(oldValue, newValue) {
+					$rootScope.$watchCollection("responses['" + qid + "']", function(newValue, oldValue) {
 						if(oldValue === newValue) {
 							return;
 						}
 
 						queue.responses[qid] = newValue;
-						queue.updated = new Date().getTime();
 
 						localStorage['queue-' + answerKey] = JSON.stringify(queue);
 					});
 
-					var watchNotes = function(oldValue, newValue) {
+					var watchNotes = function(newValue, oldValue) {
 						if(oldValue === newValue) {
 							return;
 						}
 
-						queue.notes[qid] = newValue;
-						
 						var sectionid = $rootScope.questions[qid].sectionid;
 
 						$rootScope.countNotes(sectionid);
-						queue.updated = new Date().getTime();
 
+						// Only queue notes with created, deleted, saveEdited flags
+						queue.notes[qid] = _.filter(newValue, function(v) {
+							return v.create || v.deleted || v.saveEdited || v.saveResolved
+						});
+
+						if(_.isEmpty(queue.notes[qid])) {
+							delete queue.notes[qid];
+						}
 						localStorage['queue-' + answerKey] = JSON.stringify(queue);
 					}
 
@@ -510,7 +509,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 							}
 							else if(section == 'notes') {
 								// Add created notes
-								_.each(_.filter(values, function(v) { return v.create; }), function(note) {
+								_.each(_.filter(values, function(v) { return v.create && !v.deleted; }), function(note) {
 									var record = {
 										questionid: note.questionid,
 										date: new Date().format(),
@@ -532,7 +531,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 								});
 
 								// Update edited notes
-								_.each(_.filter(values, function(v) { return !v.create && (v.saveEdited || v.saveResolved); }), function(note) {
+								_.each(_.filter(values, function(v) { return !v.create && !v.deleted && (v.saveEdited || v.saveResolved); }), function(note) {
 									var record = {
 										questionid: note.questionid,
 										date: note.date,
@@ -573,17 +572,28 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 							// Clear deleted notes
 							_.each(_.filter(values, function(v) { return v.deleted; }), function(note) {
-								var complete = function() {
+								var complete = function(row) {
+									// Remove deleted notes from model
 									$rootScope.notes[qid] = _.filter($rootScope.notes[qid], function(v) {
 										return !v.deleted;
 									});
 
-									return true;
+									return row;
 								}
-								gs.deleteRow(note[':links'].edit, $rootScope.accessToken).then(complete, complete);
+
+								// Delete from answer sheet if it exists there
+								if(note[':links']) {
+									pq[qid] = gs.deleteRow(note[':links'].edit, $rootScope.accessToken, qid).then(complete, complete);
+								}
+								else {
+									complete({ id: qid });
+								}
 							});
 
+							// No updates
 							if(!pq[qid]) {
+								delete q[qid];
+								localStorage['queue-' + answerKey] = JSON.stringify(queue);
 								return;
 							}
 
@@ -592,7 +602,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 							pq[qid].values = _.clone(q[qid]);
 
 							pq[qid].then(function(row) {
-								var qid = row.questionid;
+								var qid = row.questionid || row.id;
 
 								size--;
 
@@ -606,7 +616,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 								// If the values have changed, then let this run again, otherwise
 								// consider this value saved
-								if(pq[qid] && _.isEqual(q[qid], pq[qid].values)) {
+								if(!pq[qid] || _.isEqual(q[qid], pq[qid].values)) {
 									delete q[qid];
 								}
 
@@ -862,7 +872,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				// Import scope variables
 				$scope.question = $scope.$parent.question;
 
-				var refreshNotes = function() {
+				var refreshNotes = function(newValue, oldValue) {
 					$scope.notes = [];
 					$scope.threads = {};
 					$scope.threadOrder = [];
@@ -879,7 +889,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 								$scope.threads[note.resolved].push(note);
 							}
-							else {
+							else if(!note.deleted) {
 								$scope.notes.push(note);
 							}
 						});
@@ -888,6 +898,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 				refreshNotes();
 
 				$rootScope.$watch('notes["' + $scope.question.questionid + '"]', refreshNotes, true);
+				$rootScope.$watchCollection('notes["' + $scope.question.questionid + '"]', refreshNotes, true);
 
 				$scope.addNote = function() {
 					if(!$scope.newNote || $scope.newNote.match(/^\s*$/)) {
@@ -1027,7 +1038,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 			link: function($scope, element, attrs) {
 				$scope.placeholder = attrs.placeholder ? $scope.$eval(attrs.placeholder) : '';
-				$scope.$watch(attrs.placeholder, function(oldValue, newValue) {
+				$scope.$watch(attrs.placeholder, function(newValue, oldValue) {
 					if(oldValue !== newValue) {
 						$scope.placeholder = $scope.$eval(attrs.placeholder);
 					}
