@@ -574,27 +574,27 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 
 									pq[qid] = promise;
 								});
+
+								// Clear deleted notes
+								_.each(_.filter(values, function(v) { return v.deleted; }), function(note) {
+									var complete = function(row) {
+										// Remove deleted notes from model
+										$rootScope.notes[qid] = _.filter($rootScope.notes[qid], function(v) {
+											return !v.deleted;
+										});
+
+										return row;
+									}
+
+									// Delete from answer sheet if it exists there
+									if(note[':links']) {
+										pq[qid] = gs.deleteRow(note[':links'].edit, $rootScope.accessToken, qid).then(complete, complete);
+									}
+									else {
+										complete({ id: qid });
+									}
+								});
 							}
-
-							// Clear deleted notes
-							_.each(_.filter(values, function(v) { return v.deleted; }), function(note) {
-								var complete = function(row) {
-									// Remove deleted notes from model
-									$rootScope.notes[qid] = _.filter($rootScope.notes[qid], function(v) {
-										return !v.deleted;
-									});
-
-									return row;
-								}
-
-								// Delete from answer sheet if it exists there
-								if(note[':links']) {
-									pq[qid] = gs.deleteRow(note[':links'].edit, $rootScope.accessToken, qid).then(complete, complete);
-								}
-								else {
-									complete({ id: qid });
-								}
-							});
 
 							// No updates
 							if(!pq[qid]) {
@@ -812,7 +812,7 @@ angular.module('W3FWIS', [ 'GoogleSpreadsheets', 'GoogleDrive', 'W3FSurveyLoader
 					$scope.sectionAnswers = [];
 					$scope.sectionQuestions = _.filter($scope.questions, function(q) {
 						if(q.sectionid == $scope.sectionid) {
-							if($scope.responses[q.questionid].response != undefined && $scope.responses[q.questionid].response != '') {
+							if($scope.responses[q.questionid].response != undefined && $scope.responses[q.questionid].response !== '') {
 								$scope.sectionAnswers.push($scope.responses[q.questionid]);
 							}
 
