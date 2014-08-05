@@ -4,7 +4,13 @@
 
 		<fancy-select ng-options="item.weight.toString() as item.content for item in question.option" ng-model="response.response" class="answer-select option-select" id="question-{{ question.questionid }}" with-null="-" ng-disabled="readOnly || commentOnly" />
 	</div>
-
+	<div class="confidence" ng-if="question.wantconfidence == 'Yes'">
+		<label class="confidence-level">
+			<span>Confidence:</span>
+			<fancy-select ng-model="response.confidence" ng-options="val.toString() as val for val in [ '0%', '25%', '50%', '75%', '95%', '100%' ]" with-null="-" ng-disabled="readOnly || commentOnly" />
+		</label>
+	</div>
+	
 	<div ng-if="question.type == 'Sum'" class="answer-sum" sum-question="question">
 		{{ response.response }}
 	</div>
@@ -14,6 +20,7 @@
 			{{ question.questionid.split('.').reverse()[0]}}: <em><label for="question-{{ question.questionid }}">{{ question.question }}</label></em>
 		</h3>
 	</div>
+	
 
 	<p ng-if="question.helplink" class="helplink">
 		<a href="{{question.helplink}}" target="w3f-guidance">Further question guidance &rarr;</a>
@@ -63,14 +70,6 @@
 				<fancy-select ng-model="response.response" class="answer-select scale-select" id="question-{{ question.questionid }}" ng-options="val.toString() as val for val in [].range(11)" with-null="-" ng-disabled="readOnly || commentOnly" />
 			</label>
 		</span>
-	</div>
-
-	<div class="confidence" ng-if="question.wantconfidence == 'Yes'">
-		<label class="confidence-level">
-			<span>Confidence:</span>
-
-			<fancy-select ng-model="response.confidence" ng-options="val.toString() as val for val in [ '0%', '25%', '50%', '75%', '95%', '100%' ]" with-null="-" ng-disabled="readOnly || commentOnly" />
-		</label>
 	</div>
 
 	<div ng-if="question.guidance.length" class="guidance-container">
