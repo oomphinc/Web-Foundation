@@ -20,7 +20,7 @@
 <html ng-app="W3FWIS">
 	<head>
 		<base href="/" />
-		<title>World Wide Web Foundation Web Index Survey 2014{{ country ? ' - ' + country : ''}}</title>
+		<title>World Wide Web Foundation Open Data Barometer Technical Survey 2014{{ country ? ' - ' + country : ''}}</title>
 
 		<script src="js/jquery-1.11.0.min.js"></script>
 		<script src="js/underscore-min.js"></script>
@@ -56,13 +56,13 @@
 		<div id="wrapper" with-rail>
 			<header class="branding">
 				<h1>World Wide Web Foundation</h1>
-				<h2>Web Index Survey - 2014{{ country ? ' - ' + country : '' }}</h2>
+				<h2>Open Data Barometer - 2014{{ country ? ' - ' + country : '' }}</h2>
 			</header>
 
 			<div ng-if="error">{{ error }}</div>
 
 			<div id="sign-in" ng-show="showSignin && !error">
-				<p>Welcome to the Web Index Survey 2014. Sign in with your Google account to participate.</p>
+				<p>Welcome to the 2014 Open Data Barometer Technical Assessment Survey. Sign in with your Google account to participate.</p>
 
 				<p><strong>VERY IMPORTANT NOTE:</strong> If you are accessing this survey on
 				a shared computer, please be sure to access this survey in
