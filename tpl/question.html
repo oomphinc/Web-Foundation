@@ -1,15 +1,19 @@
 <div class="question question-{{ question.type }}" ng-init="response = responses[question.questionid]">
-	<div ng-if="question.type == 'Option'" class="response">
-		<notes ng-if="!anonymous" field="'response'" />
-
-		<fancy-select ng-options="item.weight.toString() as item.content for item in question.option" ng-model="response.response" class="answer-select option-select" id="question-{{ question.questionid }}" with-null="-" ng-disabled="readOnly || commentOnly" />
-	</div>
 	<div class="confidence" ng-if="question.wantconfidence == 'Yes'">
 		<label class="confidence-level">
 			<span>Confidence:</span>
 			<fancy-select ng-model="response.confidence" ng-options="val.toString() as val for val in [ '0%', '25%', '50%', '75%', '95%', '100%' ]" with-null="-" ng-disabled="readOnly || commentOnly" />
 		</label>
 	</div>
+	
+	<div ng-if="question.type == 'Option'" class="response">
+		<notes ng-if="!anonymous" field="'response'" />
+		<label class="confidence-level">
+			<span>Answer:</span>
+			<fancy-select ng-options="item.weight.toString() as item.content for item in question.option" ng-model="response.response" class="answer-select option-select" id="question-{{ question.questionid }}" with-null="-" ng-disabled="readOnly || commentOnly" /> 
+		</label>
+	</div>
+	
 	
 	<div ng-if="question.type == 'Sum'" class="answer-sum" sum-question="question">
 		{{ response.response }}
