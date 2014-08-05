@@ -34,6 +34,7 @@ h5 {
 	margin: .5em 0 .25em;
 }
 
+}
 textarea {
 	border: 1px solid #b8b8b8;
 	width: 100%;
@@ -41,6 +42,10 @@ textarea {
 	height: 9em;
 	margin: .5em 0;
 	box-sizing: border-box;
+}
+
+.supporting textarea {
+	height:4em;	
 }
 	input[disabled],
 	textarea[disabled] {
