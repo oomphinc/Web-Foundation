@@ -233,7 +233,8 @@ button {
 	}
 
 	.question .confidence {
-		font-size: 1.25em;
+		font-size: 1.0em;
+		float:right;
 	}
 
 	.question .private-notes,
