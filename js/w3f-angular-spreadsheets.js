@@ -231,7 +231,7 @@ angular.module('GoogleSpreadsheets', [])
 			return deferred.promise;
 		};
 
-		function deleteRow(url, accessToken) {
+		function deleteRow(url, accessToken, id) {
 			var deferred = defer();
 
 			$http({
@@ -246,7 +246,7 @@ angular.module('GoogleSpreadsheets', [])
 					var xml = new DOMParser().parseFromString(data, "text/xml")
 					var entries = xml.getElementsByTagName('entry');
 
-					deferred.resolve();
+					deferred.resolve({ id: id });
 				})
 				.error(function(data, status, headers, config) {
 					deferred.reject(data);

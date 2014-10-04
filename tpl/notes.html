@@ -14,7 +14,7 @@
 			<a class="resolved-note" title="Click to expand">Resolved {{ threadDate }}</a>
 		</div>
 
-		<ng-include src="'tpl/note.html'" ng-repeat="note in notes"></ng-include>
+		<ng-include src="'tpl/note.html'" ng-repeat="note in notes track by $index"></ng-include>
 	</div>
 
 	<div class="notes-actions" ng-show="!addingNote && !$rootScope.readOnly">

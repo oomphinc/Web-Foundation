@@ -89,10 +89,14 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 					$rootScope.commentOnly = $rootScope.participant == 'Reviewer';
 				}
 
+				if($rootScope.forceReadOnly) {
+					$rootScope.readOnly = true;
+				}
+
 				$rootScope.anonymous = $rootScope.participant == 'Anonymous';
 				$rootScope.country = $rootScope.control['Country'];
 
-				if($rootScope.anonymous && !$rootScope.userEmail.match(/@(thewebindex\.org|webfoundation\.org)$/)) {
+				if($rootScope.anonymous && !$rootScope.userEmail.match(/@(thewebindex\.org|webfoundation\.org|thinkoomph\.com)$/)) {
 					q.reject();
 					return;
 				}
@@ -324,7 +328,16 @@ angular.module('W3FSurveyLoader', [ 'GoogleSpreadsheets' ])
 							return;
 						}
 
-						$rootScope.notes[note.questionid].push(note);
+						// Avoid duplicate notes:
+						var notes = $rootScope.notes[note.questionid],
+						    lastNote = notes.length > 0 && notes[notes.length-1];
+
+						if(!lastNote || lastNote && lastNote.note != note.note) {
+							if(!note.date && note.edited) {
+								note.date = note.edited;
+							}
+							$rootScope.notes[note.questionid].push(note);
+						}
 					});
 
 					_.each($rootScope.sectionOrder, function(sectionid) {
