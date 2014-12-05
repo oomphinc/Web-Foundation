@@ -18,7 +18,7 @@ And each survey can be taken through a workflow covering:
 * Spot check by coordinator
 * Final validation
 
-It incorporates a range of question types, and conditional logic for the display of survey information.
+It incorporates a range of question types, and conditional logic for the display of survey information. It manages log-in and authentication using Google accounts, and sends e-mail notifications at each stage of the process.
 
 The current implementation was written against the Google Docs platform as of early 2014. Some changes may be required to deploy it against updated platforms.
 
