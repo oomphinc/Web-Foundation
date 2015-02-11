@@ -16,9 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-var MASTER_KEY = '0ApqzJROt-jZ0dGNoZFFtMnB3dVctNWxyc295dENFWHc';
-var CLIENT_ID = '830533464714-j7aafbpjac8cfgmutg83gu2tqgr0n5mm.apps.googleusercontent.com';
-var SERVICE_ACCOUNT = '397381159562-6qdpfe2af1mp8acvf2rps74ksudesi45@developer.gserviceaccount.com'
+var MASTER_KEY = '0ApqzJROt-jZ0dGRWb004RnNBR0xwbGtOTUNkUzd4Umc';
+var CLIENT_ID = '727497619634-av6gm7hkv2k9brcvp74f595795hk2vfg.apps.googleusercontent.com';
+var SERVICE_ACCOUNT = '727497619634-av6gm7hkv2k9brcvp74f595795hk2vfg@developer.gserviceaccount.com'
 var SCOPE = 'https://spreadsheets.google.com/feeds https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file';
 
 // Gimme a range op!
